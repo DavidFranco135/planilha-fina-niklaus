@@ -148,13 +148,15 @@
             const [authLoading, setAuthLoading] = useState(false);
             const [authError, setAuthError] = useState('');
 
-            // Função para configurar ouvintes do Firestore
+            // Função robusta para escutar mudanças no banco em tempo real
             const setupSubscriptions = (sid) => {
+                // Seta o loading como true enquanto o primeiro snapshot não chega
+                setLoading(true);
+
                 const userRef = doc(db, "users", sid);
                 const unsubUser = onSnapshot(userRef, (s) => {
                     if (s.exists()) {
                         setUser({ id: s.id, ...s.data() });
-                        setLoading(false);
                     } else {
                         handleLogout();
                     }
@@ -165,7 +167,10 @@
                     const data = s.docs.map(d => ({id: d.id, ...d.data()}))
                                        .sort((a, b) => new Date(b.date) - new Date(a.date));
                     setTransactions(data);
-                    // Garantimos que o loading pare assim que a primeira lista de transações chegar
+                    // Importante: Só encerra o loading quando os dados realmente chegarem
+                    setLoading(false);
+                }, (err) => {
+                    console.error("Erro ao sincronizar transações:", err);
                     setLoading(false);
                 });
 
@@ -277,18 +282,6 @@
                 }
             };
 
-            const handlePhotoUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onloadend = async () => {
-                    const base64 = reader.result;
-                    await updateDoc(doc(db, "users", user.id), { photoURL: base64 });
-                    setUser({...user, photoURL: base64});
-                };
-                reader.readAsDataURL(file);
-            };
-
             const filteredTransactions = useMemo(() => {
                 let list = transactions;
                 if (filterMonth) {
@@ -327,7 +320,7 @@
             if (loading) return html`
                 <div className="h-screen flex flex-col items-center justify-center bg-white">
                     <div className="w-12 h-12 border-4 border-slate-100 loader rounded-full mb-4"></div>
-                    <p className="text-violet-600 font-bold text-xs uppercase tracking-widest">Sincronizando...</p>
+                    <p className="text-violet-600 font-bold text-xs uppercase tracking-widest animate-pulse">Sincronizando Dados...</p>
                 </div>`;
 
             if (!user) return html`
@@ -338,7 +331,7 @@
                                 <i className="fas fa-fingerprint text-3xl"></i>
                             </div>
                             <h1 className="text-3xl font-extrabold text-slate-900">${isRegistering ? 'Criar Conta' : 'Acesse sua Conta'}</h1>
-                            <p className="text-slate-400 mt-2 text-sm">Organize suas finanças agora</p>
+                            <p className="text-slate-400 mt-2 text-sm">Organize suas finanças em qualquer lugar</p>
                         </div>
                         ${authError && html`
                             <div className="bg-rose-50 text-rose-600 p-4 rounded-xl text-xs font-bold mb-6 text-center border border-rose-100 animate-in">
@@ -346,15 +339,21 @@
                             </div>
                         `}
                         <form onSubmit=${handleAuth} className="space-y-4">
-                            <input type="email" required placeholder="Seu e-mail" className="input-dark-text w-full p-4 bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-2xl outline-none" value=${email} onInput=${e => setEmail(e.target.value)} />
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
+                                <input type="email" required placeholder="seu@email.com" className="input-dark-text w-full p-4 bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-2xl outline-none" value=${email} onInput=${e => setEmail(e.target.value)} />
+                            </div>
                             
-                            <div className="relative">
-                                <input type=${showPass ? "text" : "password"} required placeholder="Sua senha" 
-                                    className="input-dark-text w-full p-4 bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-2xl outline-none" 
-                                    value=${pass} onInput=${e => setPass(e.target.value)} />
-                                <button type="button" onClick=${() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-violet-600">
-                                    <i className=${showPass ? "fas fa-eye-slash" : "fas fa-eye"}></i>
-                                </button>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
+                                <div className="relative">
+                                    <input type=${showPass ? "text" : "password"} required placeholder="••••••••" 
+                                        className="input-dark-text w-full p-4 bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-2xl outline-none pr-12" 
+                                        value=${pass} onInput=${e => setPass(e.target.value)} />
+                                    <button type="button" onClick=${() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-violet-600 transition-colors">
+                                        <i className=${showPass ? "fas fa-eye-slash" : "fas fa-eye"}></i>
+                                    </button>
+                                </div>
                             </div>
                             
                             <div className="flex items-center gap-2 px-1">
@@ -362,7 +361,7 @@
                                 <label htmlFor="remember" className="text-xs text-slate-500 font-medium cursor-pointer">Manter conectado</label>
                             </div>
 
-                            <button disabled=${authLoading} className="w-full py-4 bg-violet-600 text-white font-bold rounded-2xl hover:bg-violet-700 transition-all shadow-lg shadow-violet-100">
+                            <button disabled=${authLoading} className="w-full py-4 bg-violet-600 text-white font-bold rounded-2xl hover:bg-violet-700 transition-all shadow-lg shadow-violet-100 active:scale-95">
                                 ${authLoading ? 'Processando...' : (isRegistering ? 'Finalizar Cadastro' : 'Entrar')}
                             </button>
                             <button type="button" onClick=${() => { setIsRegistering(!isRegistering); setAuthError(''); }} className="w-full text-violet-600 font-bold text-sm pt-4 hover:underline text-center">
@@ -518,29 +517,26 @@
                                 <div className="space-y-6 animate-in">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                                         <div onClick=${() => { setActiveTab('transactions'); setTypeFilter('INCOME'); }} className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-50 shadow-sm card-stat">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Entradas do Período</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Entradas</p>
                                             <p className="text-2xl md:text-3xl font-extrabold text-emerald-500">R$ ${totals.inc.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                            <p className="text-[9px] text-slate-300 font-bold mt-2">Clique para listar receitas</p>
                                         </div>
                                         <div onClick=${() => { setActiveTab('transactions'); setTypeFilter('EXPENSE'); }} className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-50 shadow-sm card-stat">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saídas do Período</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saídas</p>
                                             <p className="text-2xl md:text-3xl font-extrabold text-rose-500">R$ ${totals.exp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                            <p className="text-[9px] text-slate-300 font-bold mt-2">Clique para listar despesas</p>
                                         </div>
                                         <div className=${`p-6 md:p-8 rounded-[2rem] text-white shadow-xl shadow-violet-100 transition-all duration-500 ${totals.bal >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>
                                             <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Saldo Líquido</p>
                                             <p className="text-2xl md:text-3xl font-extrabold">R$ ${totals.bal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                            <p className="text-[9px] text-white/40 font-bold mt-2">Sincronizado</p>
                                         </div>
                                     </div>
 
                                     <div className="bg-white rounded-[2rem] border border-slate-50 shadow-sm overflow-hidden">
                                         <div className="p-6 border-b border-slate-50 bg-slate-50/20 flex justify-between items-center">
                                             <h3 className="font-extrabold text-slate-800">Recentes</h3>
-                                            <button onClick=${() => { setActiveTab('transactions'); setTypeFilter('ALL'); }} className="text-violet-600 text-xs font-black uppercase tracking-tighter">Ver Extrato Completo</button>
+                                            <button onClick=${() => { setActiveTab('transactions'); setTypeFilter('ALL'); }} className="text-violet-600 text-xs font-black uppercase tracking-tighter">Ver Extrato</button>
                                         </div>
                                         <div className="divide-y divide-slate-50">
-                                            ${filteredTransactions.length === 0 ? html`<div className="p-16 text-center text-slate-300 text-sm font-bold uppercase tracking-widest">Nenhuma movimentação neste período</div>` : 
+                                            ${filteredTransactions.length === 0 ? html`<div className="p-16 text-center text-slate-300 text-sm font-bold uppercase tracking-widest">Nenhuma movimentação</div>` : 
                                               filteredTransactions.slice(0, 5).map(t => html`
                                                 <div className="flex items-center justify-between p-5 md:p-6 hover:bg-violet-50/20 transition-all group">
                                                     <div className="flex items-center gap-4">
@@ -556,9 +552,6 @@
                                                         <p className=${`font-extrabold ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-slate-900'}`}>
                                                             ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                         </p>
-                                                        <button onClick=${() => openEdit(t)} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-violet-500 hidden md:block p-2">
-                                                            <i className="fas fa-edit"></i>
-                                                        </button>
                                                     </div>
                                                 </div>
                                             `)}
@@ -575,7 +568,6 @@
                                             <button onClick=${() => setTypeFilter('INCOME')} className=${`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${typeFilter === 'INCOME' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Entradas</button>
                                             <button onClick=${() => setTypeFilter('EXPENSE')} className=${`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${typeFilter === 'EXPENSE' ? 'bg-rose-500 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Saídas</button>
                                         </div>
-                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.1em]">${filteredTransactions.length} registros no período</span>
                                     </div>
 
                                     <div className="bg-white rounded-[2rem] border border-slate-50 shadow-sm table-container overflow-hidden">
@@ -602,7 +594,7 @@
                                                                 <button onClick=${() => openEdit(t)} title="Editar" className="text-slate-300 hover:text-violet-500 transition-colors p-2">
                                                                     <i className="fas fa-edit"></i>
                                                                 </button>
-                                                                <button onClick=${() => { if(confirm("Deseja excluir este registro permanentemente?")) deleteDoc(doc(db, "transactions", t.id)); }} title="Excluir" className="text-slate-300 hover:text-rose-500 transition-colors p-2">
+                                                                <button onClick=${() => { if(confirm("Excluir registro?")) deleteDoc(doc(db, "transactions", t.id)); }} title="Excluir" className="text-slate-300 hover:text-rose-500 transition-colors p-2">
                                                                     <i className="fas fa-trash"></i>
                                                                 </button>
                                                             </div>
@@ -626,16 +618,15 @@
                                                     <i className="fas fa-camera mr-2"></i> Alterar Avatar
                                                     <input type="file" accept="image/*" className="hidden" onChange=${handlePhotoUpload} />
                                                 </label>
-                                                <p className="text-[10px] text-slate-400 mt-4 uppercase font-black tracking-widest">Sincronizado na Nuvem</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-sm border border-slate-50">
-                                        <h3 className="text-xl font-extrabold text-slate-900 mb-8 tracking-tight">Preferências Gerais</h3>
+                                        <h3 className="text-xl font-extrabold text-slate-900 mb-8 tracking-tight">Preferências</h3>
                                         <div className="space-y-6">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome de Exibição do App</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome do App</label>
                                                 <div className="flex flex-col md:flex-row gap-3">
                                                     <input id="app-name-input" type="text" defaultValue=${user.appName} className="input-dark-text flex-1 p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-violet-400 transition-colors font-bold" />
                                                     <button onClick=${() => {
@@ -643,16 +634,6 @@
                                                         updateDoc(doc(db, "users", user.id), { appName: val });
                                                         setUser({...user, appName: val});
                                                     }} className="bg-violet-600 text-white px-10 py-4 rounded-xl font-bold text-sm hover:bg-violet-700 transition-all shadow-md active:scale-95">Salvar</button>
-                                                </div>
-                                            </div>
-                                            <div className="pt-8 border-t border-slate-50 flex justify-between items-center">
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status da Conta</p>
-                                                    <p className="text-xs text-slate-500 font-medium">Logado como: <span className="font-extrabold text-slate-800">${user.email}</span></p>
-                                                </div>
-                                                <div className="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full">
-                                                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                                                    <span className="text-[9px] font-black uppercase tracking-widest">Nuvem Ativa</span>
                                                 </div>
                                             </div>
                                         </div>

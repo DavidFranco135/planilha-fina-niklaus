@@ -78,9 +78,6 @@
             transform: translateY(-4px);
             filter: brightness(0.98);
         }
-        .card-stat:active {
-            transform: scale(0.98);
-        }
 
         .month-selector-btn {
             transition: all 0.2s;
@@ -107,7 +104,7 @@
     <div id="root"></div>
 
     <script type="module">
-        import React, { useState, useEffect, useMemo } from 'react';
+        import React, { useState, useEffect, useMemo, useRef } from 'react';
         import ReactDOM from 'react-dom';
         import htm from 'htm';
         import { initializeApp } from "firebase/app";
@@ -145,18 +142,14 @@
             
             const [email, setEmail] = useState('');
             const [pass, setPass] = useState('');
+            const [showPass, setShowPass] = useState(false);
             const [rememberMe, setRememberMe] = useState(true);
             const [isRegistering, setIsRegistering] = useState(false);
             const [authLoading, setAuthLoading] = useState(false);
             const [authError, setAuthError] = useState('');
 
-            useEffect(() => {
-                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
-                if (!sid) {
-                    setLoading(false);
-                    return;
-                }
-
+            // Função para configurar ouvintes do Firestore
+            const setupSubscriptions = (sid) => {
                 const userRef = doc(db, "users", sid);
                 const unsubUser = onSnapshot(userRef, (s) => {
                     if (s.exists()) {
@@ -172,9 +165,20 @@
                     const data = s.docs.map(d => ({id: d.id, ...d.data()}))
                                        .sort((a, b) => new Date(b.date) - new Date(a.date));
                     setTransactions(data);
+                    // Garantimos que o loading pare assim que a primeira lista de transações chegar
+                    setLoading(false);
                 });
 
                 return () => { unsubUser(); unsubTx(); };
+            };
+
+            useEffect(() => {
+                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+                if (sid) {
+                    return setupSubscriptions(sid);
+                } else {
+                    setLoading(false);
+                }
             }, []);
 
             const handleAuth = async (e) => {
@@ -202,13 +206,13 @@
                             await setDoc(ref, newUserObj);
                             if (rememberMe) localStorage.setItem('belaju_sid', safeId);
                             else sessionStorage.setItem('belaju_sid', safeId);
-                            setUser({ id: safeId, ...newUserObj });
+                            setupSubscriptions(safeId); 
                         }
                     } else {
                         if (s.exists() && s.data().password === pass) {
                             if (rememberMe) localStorage.setItem('belaju_sid', safeId);
                             else sessionStorage.setItem('belaju_sid', safeId);
-                            setUser({ id: safeId, ...s.data() });
+                            setupSubscriptions(safeId);
                         } else {
                             setAuthError("Usuário ou senha inválidos.");
                         }
@@ -224,6 +228,7 @@
                 localStorage.removeItem('belaju_sid');
                 sessionStorage.removeItem('belaju_sid');
                 setUser(null);
+                setTransactions([]);
                 setLoading(false);
             };
 
@@ -267,7 +272,6 @@
                     }
                     setShowModal(false);
                     setEditingId(null);
-                    setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] });
                 } catch (e) {
                     alert("Erro ao salvar.");
                 }
@@ -323,7 +327,7 @@
             if (loading) return html`
                 <div className="h-screen flex flex-col items-center justify-center bg-white">
                     <div className="w-12 h-12 border-4 border-slate-100 loader rounded-full mb-4"></div>
-                    <p className="text-violet-600 font-bold text-xs uppercase tracking-widest">Carregando...</p>
+                    <p className="text-violet-600 font-bold text-xs uppercase tracking-widest">Sincronizando...</p>
                 </div>`;
 
             if (!user) return html`
@@ -343,11 +347,19 @@
                         `}
                         <form onSubmit=${handleAuth} className="space-y-4">
                             <input type="email" required placeholder="Seu e-mail" className="input-dark-text w-full p-4 bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-2xl outline-none" value=${email} onInput=${e => setEmail(e.target.value)} />
-                            <input type="password" required placeholder="Sua senha" className="input-dark-text w-full p-4 bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-2xl outline-none" value=${pass} onInput=${e => setPass(e.target.value)} />
+                            
+                            <div className="relative">
+                                <input type=${showPass ? "text" : "password"} required placeholder="Sua senha" 
+                                    className="input-dark-text w-full p-4 bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-2xl outline-none" 
+                                    value=${pass} onInput=${e => setPass(e.target.value)} />
+                                <button type="button" onClick=${() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-violet-600">
+                                    <i className=${showPass ? "fas fa-eye-slash" : "fas fa-eye"}></i>
+                                </button>
+                            </div>
                             
                             <div className="flex items-center gap-2 px-1">
                                 <input type="checkbox" id="remember" checked=${rememberMe} onChange=${e => setRememberMe(e.target.checked)} className="w-4 h-4 text-violet-600 rounded cursor-pointer" />
-                                <label htmlFor="remember" className="text-xs text-slate-500 font-medium cursor-pointer">Manter conectado neste dispositivo</label>
+                                <label htmlFor="remember" className="text-xs text-slate-500 font-medium cursor-pointer">Manter conectado</label>
                             </div>
 
                             <button disabled=${authLoading} className="w-full py-4 bg-violet-600 text-white font-bold rounded-2xl hover:bg-violet-700 transition-all shadow-lg shadow-violet-100">
@@ -375,19 +387,19 @@
                         <button onClick=${() => changeMonth(-1)} className="month-selector-btn w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 transition-all">
                             <i className="fas fa-chevron-left text-xs"></i>
                         </button>
-                        <div className="flex flex-col items-center min-w-[120px]">
+                        <div className="flex flex-col items-center min-w-[140px]">
                             <span className="text-[9px] font-black text-violet-400 uppercase tracking-widest leading-none mb-1">Período</span>
-                            <span className="text-xs font-extrabold text-violet-700 capitalize">${name}</span>
+                            <span className="text-sm font-extrabold text-violet-700 capitalize">${name}</span>
                         </div>
                         <button onClick=${() => changeMonth(1)} className="month-selector-btn w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 transition-all">
                             <i className="fas fa-chevron-right text-xs"></i>
                         </button>
                         <div className="h-6 w-px bg-violet-50 mx-1"></div>
-                        <input type="month" value=${filterMonth} onChange=${e => setFilterMonth(e.target.value)} 
-                               className="w-8 h-8 opacity-0 absolute pointer-events-none" id="hidden-month-picker" />
-                        <label htmlFor="hidden-month-picker" className="month-selector-btn w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 cursor-pointer">
-                            <i className="fas fa-calendar-alt text-xs"></i>
-                        </label>
+                        <div className="relative overflow-hidden w-8 h-8 flex items-center justify-center month-selector-btn rounded-lg text-slate-400">
+                             <input type="month" value=${filterMonth} onChange=${e => setFilterMonth(e.target.value)} 
+                                   className="w-full h-full opacity-0 absolute inset-0 z-10 cursor-pointer" />
+                             <i className="fas fa-calendar-alt text-xs"></i>
+                        </div>
                     </div>
                 `;
             };
@@ -398,34 +410,36 @@
                     ${showModal && html`
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 modal-overlay animate-in">
                             <div className="bg-white w-full max-w-md rounded-[2rem] p-8 shadow-2xl relative">
-                                <h2 className="text-xl font-bold text-slate-900 mb-6">${editingId ? 'Editar Lançamento' : 'Novo Lançamento'}</h2>
+                                <h2 className="text-xl font-bold text-slate-900 mb-6 font-extrabold">${editingId ? 'Editar Movimentação' : 'Novo Lançamento'}</h2>
                                 <form onSubmit=${saveTransaction} className="space-y-4">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Descrição</label>
-                                        <input type="text" required placeholder="Ex: Mercado, Salário..." className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none"
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-widest">Descrição</label>
+                                        <input type="text" required placeholder="Ex: Mercado, Salário..." className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-violet-300"
                                             value=${newTx.description} onInput=${e => setNewTx({...newTx, description: e.target.value})} />
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Valor R$</label>
-                                        <input type="text" required placeholder="0,00" className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none"
-                                            value=${newTx.amount} onInput=${e => setNewTx({...newTx, amount: e.target.value})} />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-widest">Valor R$</label>
+                                            <input type="text" required placeholder="0,00" className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-violet-300"
+                                                value=${newTx.amount} onInput=${e => setNewTx({...newTx, amount: e.target.value})} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-widest">Data</label>
+                                            <input type="date" required className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-violet-300"
+                                                value=${newTx.date} onInput=${e => setNewTx({...newTx, date: e.target.value})} />
+                                        </div>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Data</label>
-                                        <input type="date" required className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none"
-                                            value=${newTx.date} onInput=${e => setNewTx({...newTx, date: e.target.value})} />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tipo</label>
-                                        <select className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none"
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-widest">Tipo</label>
+                                        <select className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-violet-300"
                                             value=${newTx.type} onChange=${e => setNewTx({...newTx, type: e.target.value})}>
                                             <option value="INCOME">Receita (+)</option>
                                             <option value="EXPENSE">Despesa (-)</option>
                                         </select>
                                     </div>
-                                    <div className="flex gap-3 pt-4">
-                                        <button type="button" onClick=${() => { setShowModal(false); setEditingId(null); }} className="flex-1 py-3 font-bold text-slate-400 bg-slate-50 rounded-xl">Cancelar</button>
-                                        <button type="submit" className="flex-2 px-8 py-3 bg-violet-600 text-white font-bold rounded-xl shadow-lg">Salvar</button>
+                                    <div className="flex gap-3 pt-6">
+                                        <button type="button" onClick=${() => { setShowModal(false); setEditingId(null); }} className="flex-1 py-4 font-bold text-slate-400 bg-slate-50 rounded-xl hover:bg-slate-100 transition-all">Cancelar</button>
+                                        <button type="submit" className="flex-2 px-10 py-4 bg-violet-600 text-white font-bold rounded-xl shadow-lg hover:bg-violet-700 transition-all">Confirmar</button>
                                     </div>
                                 </form>
                             </div>
@@ -437,23 +451,23 @@
                             <${UserPhoto} className="w-12 h-12 rounded-2xl shadow-sm" />
                             <div className="overflow-hidden">
                                 <h2 className="font-extrabold text-slate-800 truncate">${user.appName}</h2>
-                                <p className="text-[10px] text-violet-500 font-bold uppercase tracking-widest">Financeiro Pro</p>
+                                <p className="text-[10px] text-violet-500 font-black uppercase tracking-widest">Financeiro Pro</p>
                             </div>
                         </div>
                         <nav className="flex-1 px-4 space-y-1">
                             <button onClick=${() => setActiveTab('dashboard')} className=${`w-full flex items-center gap-4 p-4 font-bold transition-all ${activeTab === 'dashboard' ? 'tab-active' : 'text-slate-400 hover:text-violet-600'}`}>
-                                <i className="fas fa-grid-2 w-5"></i> Início
+                                <i className="fas fa-grid-2 w-5 text-center"></i> Início
                             </button>
                             <button onClick=${() => { setActiveTab('transactions'); setTypeFilter('ALL'); }} className=${`w-full flex items-center gap-4 p-4 font-bold transition-all ${activeTab === 'transactions' ? 'tab-active' : 'text-slate-400 hover:text-violet-600'}`}>
-                                <i className="fas fa-receipt w-5"></i> Extrato
+                                <i className="fas fa-receipt w-5 text-center"></i> Extrato
                             </button>
                             <button onClick=${() => setActiveTab('settings')} className=${`w-full flex items-center gap-4 p-4 font-bold transition-all ${activeTab === 'settings' ? 'tab-active' : 'text-slate-400 hover:text-violet-600'}`}>
-                                <i className="fas fa-cog w-5"></i> Ajustes
+                                <i className="fas fa-cog w-5 text-center"></i> Ajustes
                             </button>
                         </nav>
                         <div className="p-8 border-t border-slate-50">
-                            <button onClick=${handleLogout} className="text-rose-500 font-bold flex items-center gap-3 w-full hover:bg-rose-50 p-2 rounded-xl transition-all">
-                                <i className="fas fa-power-off"></i> Sair
+                            <button onClick=${handleLogout} className="text-rose-500 font-bold flex items-center gap-3 w-full hover:bg-rose-50 p-3 rounded-xl transition-all">
+                                <i className="fas fa-power-off"></i> Sair da Conta
                             </button>
                         </div>
                     </aside>
@@ -465,8 +479,8 @@
                         <button onClick=${() => { setActiveTab('transactions'); setTypeFilter('ALL'); }} className=${`flex flex-col items-center gap-1 ${activeTab === 'transactions' ? 'text-violet-600' : 'text-slate-300'}`}>
                             <i className="fas fa-receipt text-lg"></i><span className="text-[10px] font-bold">Extrato</span>
                         </button>
-                        <button onClick=${() => { setEditingId(null); setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] }); setShowModal(true); }} className="flex flex-col items-center gap-1 bg-violet-600 text-white w-12 h-12 rounded-full -mt-8 shadow-xl">
-                            <i className="fas fa-plus text-xl mt-3"></i>
+                        <button onClick=${() => { setEditingId(null); setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] }); setShowModal(true); }} className="flex flex-col items-center justify-center bg-violet-600 text-white w-12 h-12 rounded-full -mt-10 shadow-xl border-4 border-white transition-transform active:scale-90">
+                            <i className="fas fa-plus text-lg"></i>
                         </button>
                         <button onClick=${() => setActiveTab('settings')} className=${`flex flex-col items-center gap-1 ${activeTab === 'settings' ? 'text-violet-600' : 'text-slate-300'}`}>
                             <i className="fas fa-user-cog text-lg"></i><span className="text-[10px] font-bold">Ajustes</span>
@@ -478,22 +492,22 @@
 
                     <main className="flex-1 pb-24 md:pb-10 overflow-x-hidden">
                         <header className="p-6 md:p-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                                <div>
+                            <div className="flex flex-col md:flex-row items-start md:items-center gap-6 w-full md:w-auto">
+                                <div className="animate-in">
                                     <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
                                         ${activeTab === 'dashboard' && 'Minhas Finanças'}
                                         ${activeTab === 'transactions' && 'Extrato Detalhado'}
                                         ${activeTab === 'settings' && 'Personalização'}
                                     </h1>
-                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">${user.email}</p>
+                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">${user.email}</p>
                                 </div>
                                 <${MonthDisplay} />
                             </div>
-                            <div className="flex gap-3 w-full md:w-auto">
-                                <button onClick=${exportPDF} className="flex-1 md:flex-none bg-white border border-violet-100 text-violet-600 px-5 py-3 rounded-xl font-bold text-sm shadow-sm hover:bg-violet-50 transition-all">
+                            <div className="flex gap-3 w-full md:w-auto animate-in">
+                                <button onClick=${exportPDF} className="flex-1 md:flex-none bg-white border border-violet-100 text-violet-600 px-6 py-3 rounded-xl font-bold text-sm shadow-sm hover:bg-violet-50 transition-all active:scale-95">
                                     <i className="fas fa-file-pdf mr-2"></i> PDF
                                 </button>
-                                <button onClick=${() => { setEditingId(null); setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] }); setShowModal(true); }} className="hidden md:block bg-violet-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-violet-100 hover:bg-violet-700 transition-all">
+                                <button onClick=${() => { setEditingId(null); setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] }); setShowModal(true); }} className="hidden md:block bg-violet-600 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-violet-100 hover:bg-violet-700 transition-all active:scale-95">
                                     <i className="fas fa-plus mr-2"></i> ADICIONAR
                                 </button>
                             </div>
@@ -504,29 +518,29 @@
                                 <div className="space-y-6 animate-in">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                                         <div onClick=${() => { setActiveTab('transactions'); setTypeFilter('INCOME'); }} className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-50 shadow-sm card-stat">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entradas</p>
-                                            <p className="text-2xl md:text-3xl font-extrabold text-emerald-500">R$ ${totals.inc.toFixed(2)}</p>
-                                            <p className="text-[9px] text-slate-300 font-bold mt-2">Toque para filtrar entradas</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Entradas do Período</p>
+                                            <p className="text-2xl md:text-3xl font-extrabold text-emerald-500">R$ ${totals.inc.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                            <p className="text-[9px] text-slate-300 font-bold mt-2">Clique para listar receitas</p>
                                         </div>
                                         <div onClick=${() => { setActiveTab('transactions'); setTypeFilter('EXPENSE'); }} className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-50 shadow-sm card-stat">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Saídas</p>
-                                            <p className="text-2xl md:text-3xl font-extrabold text-rose-500">R$ ${totals.exp.toFixed(2)}</p>
-                                            <p className="text-[9px] text-slate-300 font-bold mt-2">Toque para filtrar saídas</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saídas do Período</p>
+                                            <p className="text-2xl md:text-3xl font-extrabold text-rose-500">R$ ${totals.exp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                            <p className="text-[9px] text-slate-300 font-bold mt-2">Clique para listar despesas</p>
                                         </div>
-                                        <div className=${`p-6 md:p-8 rounded-[2rem] text-white shadow-xl shadow-violet-100 transition-colors duration-500 ${totals.bal >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>
-                                            <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">Saldo Líquido</p>
-                                            <p className="text-2xl md:text-3xl font-extrabold">R$ ${totals.bal.toFixed(2)}</p>
-                                            <p className="text-[9px] text-white/40 font-bold mt-2">Referente ao mês selecionado</p>
+                                        <div className=${`p-6 md:p-8 rounded-[2rem] text-white shadow-xl shadow-violet-100 transition-all duration-500 ${totals.bal >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                                            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Saldo Líquido</p>
+                                            <p className="text-2xl md:text-3xl font-extrabold">R$ ${totals.bal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                            <p className="text-[9px] text-white/40 font-bold mt-2">Sincronizado</p>
                                         </div>
                                     </div>
 
                                     <div className="bg-white rounded-[2rem] border border-slate-50 shadow-sm overflow-hidden">
                                         <div className="p-6 border-b border-slate-50 bg-slate-50/20 flex justify-between items-center">
-                                            <h3 className="font-bold text-slate-800">Recentes no Período</h3>
-                                            <button onClick=${() => { setActiveTab('transactions'); setTypeFilter('ALL'); }} className="text-violet-600 text-xs font-bold uppercase">Ver Extrato</button>
+                                            <h3 className="font-extrabold text-slate-800">Recentes</h3>
+                                            <button onClick=${() => { setActiveTab('transactions'); setTypeFilter('ALL'); }} className="text-violet-600 text-xs font-black uppercase tracking-tighter">Ver Extrato Completo</button>
                                         </div>
                                         <div className="divide-y divide-slate-50">
-                                            ${filteredTransactions.length === 0 ? html`<div className="p-16 text-center text-slate-300 text-sm font-bold uppercase">Nenhum registro encontrado</div>` : 
+                                            ${filteredTransactions.length === 0 ? html`<div className="p-16 text-center text-slate-300 text-sm font-bold uppercase tracking-widest">Nenhuma movimentação neste período</div>` : 
                                               filteredTransactions.slice(0, 5).map(t => html`
                                                 <div className="flex items-center justify-between p-5 md:p-6 hover:bg-violet-50/20 transition-all group">
                                                     <div className="flex items-center gap-4">
@@ -535,14 +549,14 @@
                                                         </div>
                                                         <div>
                                                             <p className="font-bold text-slate-800 text-sm md:text-base truncate max-w-[150px]">${t.description}</p>
-                                                            <p className="text-[10px] text-slate-400">${new Date(t.date).toLocaleDateString('pt-BR')}</p>
+                                                            <p className="text-[10px] text-slate-400 font-medium">${new Date(t.date).toLocaleDateString('pt-BR')}</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-4">
-                                                        <p className=${`font-bold ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-slate-900'}`}>
-                                                            ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
+                                                        <p className=${`font-extrabold ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-slate-900'}`}>
+                                                            ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                         </p>
-                                                        <button onClick=${() => openEdit(t)} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-violet-500 hidden md:block">
+                                                        <button onClick=${() => openEdit(t)} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-violet-500 hidden md:block p-2">
                                                             <i className="fas fa-edit"></i>
                                                         </button>
                                                     </div>
@@ -555,40 +569,40 @@
 
                             ${activeTab === 'transactions' && html`
                                 <div className="space-y-4 animate-in">
-                                    <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+                                    <div className="flex flex-wrap items-center justify-between gap-4 mb-2 px-1">
                                         <div className="flex gap-2">
-                                            <button onClick=${() => setTypeFilter('ALL')} className=${`px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase transition-all ${typeFilter === 'ALL' ? 'bg-violet-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Todos</button>
-                                            <button onClick=${() => setTypeFilter('INCOME')} className=${`px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase transition-all ${typeFilter === 'INCOME' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Entradas</button>
-                                            <button onClick=${() => setTypeFilter('EXPENSE')} className=${`px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase transition-all ${typeFilter === 'EXPENSE' ? 'bg-rose-500 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Saídas</button>
+                                            <button onClick=${() => setTypeFilter('ALL')} className=${`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${typeFilter === 'ALL' ? 'bg-violet-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Tudo</button>
+                                            <button onClick=${() => setTypeFilter('INCOME')} className=${`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${typeFilter === 'INCOME' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Entradas</button>
+                                            <button onClick=${() => setTypeFilter('EXPENSE')} className=${`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${typeFilter === 'EXPENSE' ? 'bg-rose-500 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Saídas</button>
                                         </div>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${filteredTransactions.length} movimentações encontradas</span>
+                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.1em]">${filteredTransactions.length} registros no período</span>
                                     </div>
 
                                     <div className="bg-white rounded-[2rem] border border-slate-50 shadow-sm table-container overflow-hidden">
                                         <table className="w-full text-left min-w-[500px]">
-                                            <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                                            <thead className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] border-b border-slate-50">
                                                 <tr>
-                                                    <th className="px-6 py-5">Data</th>
-                                                    <th className="px-6 py-5">Descrição</th>
-                                                    <th className="px-6 py-5">Valor</th>
-                                                    <th className="px-6 py-5 text-center">Ações</th>
+                                                    <th className="px-6 py-6">Data</th>
+                                                    <th className="px-6 py-6">Descrição</th>
+                                                    <th className="px-6 py-6">Valor</th>
+                                                    <th className="px-6 py-6 text-center">Ações</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
-                                                ${filteredTransactions.length === 0 ? html`<tr><td colSpan="4" className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest">Nenhum dado encontrado</td></tr>` : 
+                                                ${filteredTransactions.length === 0 ? html`<tr><td colSpan="4" className="p-24 text-center text-slate-300 font-bold uppercase tracking-widest">Nenhum dado encontrado</td></tr>` : 
                                                   filteredTransactions.map(t => html`
-                                                    <tr key=${t.id} className="hover:bg-violet-50/20 transition-all group">
-                                                        <td className="px-6 py-4 text-xs font-medium text-slate-400">${new Date(t.date).toLocaleDateString('pt-BR')}</td>
-                                                        <td className="px-6 py-4 font-bold text-slate-700">${t.description}</td>
-                                                        <td className=${`px-6 py-4 font-bold ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                            ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
+                                                    <tr key=${t.id} className="hover:bg-violet-50/10 transition-all group">
+                                                        <td className="px-6 py-5 text-xs font-semibold text-slate-400">${new Date(t.date).toLocaleDateString('pt-BR')}</td>
+                                                        <td className="px-6 py-5 font-extrabold text-slate-700">${t.description}</td>
+                                                        <td className=${`px-6 py-5 font-black ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                            ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                         </td>
-                                                        <td className="px-6 py-4 text-center">
+                                                        <td className="px-6 py-5 text-center">
                                                             <div className="flex justify-center gap-3">
                                                                 <button onClick=${() => openEdit(t)} title="Editar" className="text-slate-300 hover:text-violet-500 transition-colors p-2">
                                                                     <i className="fas fa-edit"></i>
                                                                 </button>
-                                                                <button onClick=${() => { if(confirm("Deseja excluir este registro?")) deleteDoc(doc(db, "transactions", t.id)); }} title="Excluir" className="text-slate-300 hover:text-rose-500 transition-colors p-2">
+                                                                <button onClick=${() => { if(confirm("Deseja excluir este registro permanentemente?")) deleteDoc(doc(db, "transactions", t.id)); }} title="Excluir" className="text-slate-300 hover:text-rose-500 transition-colors p-2">
                                                                     <i className="fas fa-trash"></i>
                                                                 </button>
                                                             </div>
@@ -602,41 +616,44 @@
                             `}
 
                             ${activeTab === 'settings' && html`
-                                <div className="max-w-2xl space-y-6 animate-in">
+                                <div className="max-w-2xl space-y-6 animate-in pb-10">
                                     <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-sm border border-slate-50">
-                                        <h3 className="text-xl font-bold text-slate-900 mb-8 tracking-tight">Foto de Perfil</h3>
+                                        <h3 className="text-xl font-extrabold text-slate-900 mb-8 tracking-tight">Foto de Perfil</h3>
                                         <div className="flex flex-col md:flex-row items-center gap-8">
-                                            <${UserPhoto} className="w-24 h-24 rounded-[2rem] shadow-lg shadow-violet-100" />
+                                            <${UserPhoto} className="w-24 h-24 rounded-[2rem] shadow-lg shadow-violet-100 border-2 border-white" />
                                             <div className="flex-1 w-full text-center md:text-left">
-                                                <label className="block bg-violet-50 text-violet-600 px-6 py-3 rounded-xl font-bold text-sm text-center cursor-pointer hover:bg-violet-100 transition-all border border-violet-100">
-                                                    <i className="fas fa-camera mr-2"></i> Alterar Imagem
+                                                <label className="block bg-violet-50 text-violet-600 px-8 py-4 rounded-xl font-bold text-sm text-center cursor-pointer hover:bg-violet-100 transition-all border border-violet-100 active:scale-95">
+                                                    <i className="fas fa-camera mr-2"></i> Alterar Avatar
                                                     <input type="file" accept="image/*" className="hidden" onChange=${handlePhotoUpload} />
                                                 </label>
-                                                <p className="text-[10px] text-slate-400 mt-3 uppercase font-bold tracking-widest">Formatos aceitos: JPG, PNG</p>
+                                                <p className="text-[10px] text-slate-400 mt-4 uppercase font-black tracking-widest">Sincronizado na Nuvem</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-sm border border-slate-50">
-                                        <h3 className="text-xl font-bold text-slate-900 mb-8 tracking-tight">Personalizar App</h3>
+                                        <h3 className="text-xl font-extrabold text-slate-900 mb-8 tracking-tight">Preferências Gerais</h3>
                                         <div className="space-y-6">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Título Exibido</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome de Exibição do App</label>
                                                 <div className="flex flex-col md:flex-row gap-3">
-                                                    <input id="app-name-input" type="text" defaultValue=${user.appName} className="input-dark-text flex-1 p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-violet-400 transition-colors" />
+                                                    <input id="app-name-input" type="text" defaultValue=${user.appName} className="input-dark-text flex-1 p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-violet-400 transition-colors font-bold" />
                                                     <button onClick=${() => {
                                                         const val = document.getElementById('app-name-input').value;
                                                         updateDoc(doc(db, "users", user.id), { appName: val });
                                                         setUser({...user, appName: val});
-                                                    }} className="bg-violet-600 text-white px-8 py-4 rounded-xl font-bold text-sm hover:bg-violet-700 transition-all">Salvar</button>
+                                                    }} className="bg-violet-600 text-white px-10 py-4 rounded-xl font-bold text-sm hover:bg-violet-700 transition-all shadow-md active:scale-95">Salvar</button>
                                                 </div>
                                             </div>
-                                            <div className="pt-6 border-t border-slate-50 flex justify-between items-center">
+                                            <div className="pt-8 border-t border-slate-50 flex justify-between items-center">
                                                 <div>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status da Conta</p>
-                                                    <p className="text-xs text-slate-500">Logado como: <span className="font-bold text-slate-800">${user.email}</span></p>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status da Conta</p>
+                                                    <p className="text-xs text-slate-500 font-medium">Logado como: <span className="font-extrabold text-slate-800">${user.email}</span></p>
                                                 </div>
-                                                <span className="bg-emerald-100 text-emerald-600 text-[9px] font-black px-3 py-1.5 rounded-full uppercase">Sincronizado</span>
+                                                <div className="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full">
+                                                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                                                    <span className="text-[9px] font-black uppercase tracking-widest">Nuvem Ativa</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

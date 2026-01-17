@@ -1,0 +1,410 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanFlow - Controle Financeiro Moderno</title>
+    <!-- Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc;
+        }
+        .animate-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "recharts": "https://esm.sh/recharts@2.12.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="module">
+        import React, { useState, useEffect, useMemo } from 'react';
+        import ReactDOM from 'react-dom';
+        import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+
+        // --- Constants & Types ---
+        const TransactionType = {
+            INCOME: 'INCOME',
+            EXPENSE: 'EXPENSE'
+        };
+
+        // --- Components ---
+
+        const Sidebar = ({ appName, currentView, setView, onLogout }) => (
+            <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-slate-200 z-50 hidden lg:flex flex-col">
+                <div className="p-6 border-b border-slate-100">
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                        {appName}
+                    </h1>
+                </div>
+                <nav className="flex-1 p-4 space-y-2">
+                    <button
+                        onClick={() => setView('dashboard')}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
+                            currentView === 'dashboard' ? 'bg-indigo-50 text-indigo-600 font-semibold' : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                    >
+                        <i className="fa-solid fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button
+                        onClick={() => setView('settings')}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
+                            currentView === 'settings' ? 'bg-indigo-50 text-indigo-600 font-semibold' : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                    >
+                        <i className="fa-solid fa-gear"></i>
+                        <span>Configurações</span>
+                    </button>
+                </nav>
+                <div className="p-4 border-t border-slate-100">
+                    <button onClick={onLogout} className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all">
+                        <i className="fa-solid fa-right-from-bracket"></i>
+                        <span>Sair</span>
+                    </button>
+                </div>
+            </aside>
+        );
+
+        const Login = ({ onAuth }) => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [isRegister, setIsRegister] = useState(false);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (email && password) onAuth(email, isRegister);
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+                    <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border border-slate-200 animate-in">
+                        <div className="text-center mb-10">
+                            <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white text-2xl shadow-lg shadow-indigo-200">
+                                <i className="fa-solid fa-vault"></i>
+                            </div>
+                            <h2 className="text-2xl font-bold text-slate-800">{isRegister ? 'Criar nova conta' : 'Acesse o Painel'}</h2>
+                            <p className="text-slate-500 mt-2">{isRegister ? 'Cadastre seu e-mail para começar' : 'Entre com suas credenciais'}</p>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
+                                <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="seu@email.com" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+                                <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••" />
+                            </div>
+                            <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all active:scale-95">
+                                {isRegister ? 'Registrar Agora' : 'Entrar na Conta'}
+                            </button>
+                        </form>
+                        <div className="mt-8 text-center border-t border-slate-100 pt-6">
+                            <button onClick={() => setIsRegister(!isRegister)} className="text-sm text-indigo-600 font-bold hover:underline">
+                                {isRegister ? 'Já possui cadastro? Faça Login' : 'Novo por aqui? Crie uma conta'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Dashboard = ({ user, transactions, onAdd, onDelete }) => {
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [newTx, setNewTx] = useState({ description: '', amount: 0, date: new Date().toISOString().split('T')[0], type: TransactionType.EXPENSE, category: user.categories.expense[0] });
+
+            const totals = useMemo(() => {
+                const income = transactions.filter(t => t.type === TransactionType.INCOME).reduce((acc, curr) => acc + curr.amount, 0);
+                const expenses = transactions.filter(t => t.type === TransactionType.EXPENSE).reduce((acc, curr) => acc + curr.amount, 0);
+                return { income, expenses, balance: income - expenses };
+            }, [transactions]);
+
+            const chartData = [{ name: 'Receitas', value: totals.income, color: '#10b981' }, { name: 'Despesas', value: totals.expenses, color: '#f43f5e' }];
+
+            const generatePDF = () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                doc.setFontSize(20);
+                doc.text(user.appName + ' - Relatório Financeiro', 20, 20);
+                doc.setFontSize(12);
+                doc.text(`Resumo: Receitas R$ ${totals.income.toFixed(2)} | Despesas R$ ${totals.expenses.toFixed(2)}`, 20, 32);
+                doc.text(`Saldo Total: R$ ${totals.balance.toFixed(2)}`, 20, 40);
+                const rows = transactions.map(t => [t.date, t.description, t.category, t.type === TransactionType.INCOME ? `+ R$ ${t.amount.toFixed(2)}` : `- R$ ${t.amount.toFixed(2)}`]);
+                doc.autoTable({ head: [['Data', 'Descrição', 'Categoria', 'Valor']], body: rows, startY: 50, theme: 'grid' });
+                doc.save(`relatorio_${user.appName.replace(/\s/g, '_')}.pdf`);
+            };
+
+            return (
+                <div className="space-y-8 animate-in">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-3xl font-extrabold text-slate-800">Visão Geral</h2>
+                            <p className="text-slate-500">Gestão de {user.appName}</p>
+                        </div>
+                        <div className="flex space-x-3">
+                            <button onClick={generatePDF} className="flex items-center space-x-2 px-6 py-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 font-medium">
+                                <i className="fa-solid fa-file-pdf text-red-500"></i>
+                                <span>PDF</span>
+                            </button>
+                            <button onClick={() => setIsModalOpen(true)} className="flex items-center space-x-2 px-6 py-3 bg-indigo-600 text-white rounded-xl shadow-lg font-medium">
+                                <i className="fa-solid fa-plus"></i>
+                                <span>Lançar</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                            <p className="text-slate-500 text-sm font-medium">Receitas</p>
+                            <h3 className="text-2xl font-bold text-emerald-600">R$ {totals.income.toLocaleString()}</h3>
+                        </div>
+                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                            <p className="text-slate-500 text-sm font-medium">Despesas</p>
+                            <h3 className="text-2xl font-bold text-rose-600">R$ {totals.expenses.toLocaleString()}</h3>
+                        </div>
+                        <div className="bg-indigo-600 p-6 rounded-3xl text-white shadow-xl shadow-indigo-100">
+                            <p className="text-indigo-100 text-sm font-medium">Saldo Livre</p>
+                            <h3 className="text-2xl font-bold">R$ {totals.balance.toLocaleString()}</h3>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="p-6 border-b border-slate-100"><h4 className="font-bold">Transações</h4></div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Descrição</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Categoria</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase text-right">Valor</th>
+                                            <th className="px-6 py-4 text-center"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {transactions.map(tx => (
+                                            <tr key={tx.id} className="hover:bg-slate-50/50">
+                                                <td className="px-6 py-4 font-semibold text-slate-700">{tx.description}</td>
+                                                <td className="px-6 py-4"><span className="px-3 py-1 bg-slate-100 rounded-full text-xs">{tx.category}</span></td>
+                                                <td className={`px-6 py-4 font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                    {tx.type === TransactionType.INCOME ? '+' : '-'} R$ {tx.amount.toFixed(2)}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <button onClick={() => onDelete(tx.id)} className="text-slate-300 hover:text-rose-500"><i className="fa-solid fa-trash"></i></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col min-h-[300px]">
+                            <h4 className="font-bold mb-4">Gráfico Mensal</h4>
+                            <div className="flex-1">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={chartData}>
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                                        <Tooltip cursor={{fill: 'transparent'}} />
+                                        <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={50}>
+                                            {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    {isModalOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 animate-in">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-2xl font-bold">Lançar Registro</h3>
+                                    <button onClick={() => setIsModalOpen(false)}><i className="fa-solid fa-xmark text-xl text-slate-400"></i></button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 mb-6 p-1 bg-slate-100 rounded-2xl">
+                                    <button onClick={() => setNewTx({...newTx, type: TransactionType.INCOME, category: user.categories.income[0]})} 
+                                        className={`py-3 rounded-xl font-bold ${newTx.type === TransactionType.INCOME ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Receita</button>
+                                    <button onClick={() => setNewTx({...newTx, type: TransactionType.EXPENSE, category: user.categories.expense[0]})} 
+                                        className={`py-3 rounded-xl font-bold ${newTx.type === TransactionType.EXPENSE ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500'}`}>Despesa</button>
+                                </div>
+                                <form onSubmit={(e) => { e.preventDefault(); onAdd(newTx); setIsModalOpen(false); }} className="space-y-4">
+                                    <input type="text" placeholder="Descrição" required value={newTx.description} onChange={e => setNewTx({...newTx, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border" />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="number" step="0.01" required placeholder="Valor" onChange={e => setNewTx({...newTx, amount: parseFloat(e.target.value)})} className="w-full px-4 py-3 rounded-xl border" />
+                                        <input type="date" value={newTx.date} onChange={e => setNewTx({...newTx, date: e.target.value})} className="w-full px-4 py-3 rounded-xl border" />
+                                    </div>
+                                    <select value={newTx.category} onChange={e => setNewTx({...newTx, category: e.target.value})} className="w-full px-4 py-3 rounded-xl border">
+                                        {(newTx.type === TransactionType.INCOME ? user.categories.income : user.categories.expense).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                    </select>
+                                    <button type="submit" className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg mt-4 transition-transform active:scale-95">Confirmar</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const Settings = ({ user, onUpdate }) => {
+            const [appName, setAppName] = useState(user.appName);
+            const [incomeCats, setIncomeCats] = useState(user.categories.income.join(', '));
+            const [expenseCats, setExpenseCats] = useState(user.categories.expense.join(', '));
+            const [saved, setSaved] = useState(false);
+
+            const handleSave = () => {
+                onUpdate({
+                    ...user, appName,
+                    categories: {
+                        income: incomeCats.split(',').map(s => s.trim()).filter(Boolean),
+                        expense: expenseCats.split(',').map(s => s.trim()).filter(Boolean)
+                    }
+                });
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2000);
+            };
+
+            return (
+                <div className="max-w-4xl mx-auto bg-white p-8 rounded-3xl shadow-sm animate-in">
+                    <h2 className="text-2xl font-bold mb-6">Personalizar Sistema</h2>
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Título do Aplicativo (Ex: Sítio Belaju)</label>
+                            <input type="text" value={appName} onChange={e => setAppName(e.target.value)} className="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 outline-none" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-emerald-600 mb-2">Abas de Receitas (Categorias)</label>
+                                <textarea value={incomeCats} onChange={e => setIncomeCats(e.target.value)} rows={4} className="w-full px-4 py-3 rounded-xl border outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-rose-600 mb-2">Abas de Despesas (Categorias)</label>
+                                <textarea value={expenseCats} onChange={e => setExpenseCats(e.target.value)} rows={4} className="w-full px-4 py-3 rounded-xl border outline-none" />
+                            </div>
+                        </div>
+                        <button onClick={handleSave} className="px-8 py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all">
+                            {saved ? 'Configurações Salvas!' : 'Salvar Preferências'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App Logic ---
+
+        const App = () => {
+            const [authState, setAuthState] = useState({ user: null, loading: true });
+            const [transactions, setTransactions] = useState([]);
+            const [view, setView] = useState('dashboard');
+
+            useEffect(() => {
+                const session = localStorage.getItem('finanflow_active_session');
+                const usersDb = JSON.parse(localStorage.getItem('finanflow_users_db') || '{}');
+                if (session && usersDb[session]) {
+                    setAuthState({ user: usersDb[session], loading: false });
+                    setTransactions(JSON.parse(localStorage.getItem(`tx_${session}`) || '[]'));
+                } else {
+                    setAuthState({ user: null, loading: false });
+                }
+            }, []);
+
+            const handleAuth = (email, isRegister) => {
+                const usersDb = JSON.parse(localStorage.getItem('finanflow_users_db') || '{}');
+                const id = btoa(email.toLowerCase());
+
+                if (isRegister) {
+                    if (usersDb[id]) { alert("E-mail já cadastrado!"); return; }
+                    const newUser = { id, email, appName: 'Meu Financeiro', categories: { income: ['Vendas', 'Salário'], expense: ['Insumos', 'Lazer'] } };
+                    usersDb[id] = newUser;
+                    localStorage.setItem('finanflow_users_db', JSON.stringify(usersDb));
+                    login(newUser);
+                } else {
+                    if (!usersDb[id]) { alert("Cadastro não encontrado!"); return; }
+                    login(usersDb[id]);
+                }
+            };
+
+            const login = (user) => {
+                localStorage.setItem('finanflow_active_session', user.id);
+                setAuthState({ user, loading: false });
+                setTransactions(JSON.parse(localStorage.getItem(`tx_${user.id}`) || '[]'));
+            };
+
+            const logout = () => {
+                localStorage.removeItem('finanflow_active_session');
+                setAuthState({ user: null, loading: false });
+            };
+
+            const addTx = (tx) => {
+                const newTxs = [{...tx, id: Date.now()}, ...transactions];
+                setTransactions(newTxs);
+                localStorage.setItem(`tx_${authState.user.id}`, JSON.stringify(newTxs));
+            };
+
+            const delTx = (id) => {
+                const filtered = transactions.filter(t => t.id !== id);
+                setTransactions(filtered);
+                localStorage.setItem(`tx_${authState.user.id}`, JSON.stringify(filtered));
+            };
+
+            const updateProfile = (profile) => {
+                const usersDb = JSON.parse(localStorage.getItem('finanflow_users_db') || '{}');
+                usersDb[profile.id] = profile;
+                localStorage.setItem('finanflow_users_db', JSON.stringify(usersDb));
+                setAuthState({...authState, user: profile});
+            };
+
+            if (authState.loading) return <div className="min-h-screen flex items-center justify-center"><i className="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-600"></i></div>;
+            if (!authState.user) return <Login onAuth={handleAuth} />;
+
+            return (
+                <div className="flex min-h-screen">
+                    <Sidebar appName={authState.user.appName} currentView={view} setView={setView} onLogout={logout} />
+                    <main className="flex-1 p-4 md:p-8 lg:ml-64">
+                        <header className="mb-8 p-6 bg-white rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
+                            <h1 className="text-xl font-bold text-slate-800 flex items-center">
+                                <i className="fa-solid fa-house-chimney mr-3 text-indigo-600"></i>
+                                {authState.user.appName}
+                            </h1>
+                            <span className="text-sm font-medium text-slate-500 hidden sm:block">{authState.user.email}</span>
+                        </header>
+                        {view === 'dashboard' ? <Dashboard user={authState.user} transactions={transactions} onAdd={addTx} onDelete={delTx} /> : <Settings user={authState.user} onUpdate={updateProfile} />}
+                    </main>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

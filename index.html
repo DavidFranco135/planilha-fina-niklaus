@@ -1,177 +1,653 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>FinanFlow</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-
-  <!-- Chart -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
-      authDomain: "planilha-fina.firebaseapp.com",
-      projectId: "planilha-fina",
-      storageBucket: "planilha-fina.firebasestorage.app",
-      messagingSenderId: "288466007894",
-      appId: "1:288466007894:web:e917cc6eeac421671188f7"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const loginBox = document.getElementById("login");
-    const appBox = document.getElementById("app");
-    const form = document.getElementById("form");
-    const list = document.getElementById("list");
-    const balanceEl = document.getElementById("balance");
-
-    let chart;
-    let totalIn = 0;
-    let totalOut = 0;
-
-    document.getElementById("btnLogin").onclick = async () => {
-      await signInWithEmailAndPassword(auth, email.value, password.value);
-    };
-
-    document.getElementById("btnRegister").onclick = async () => {
-      await createUserWithEmailAndPassword(auth, email.value, password.value);
-    };
-
-    document.getElementById("logout").onclick = () => signOut(auth);
-
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        loginBox.classList.add("hidden");
-        appBox.classList.remove("hidden");
-        loadData(user.uid);
-      } else {
-        loginBox.classList.remove("hidden");
-        appBox.classList.add("hidden");
-      }
-    });
-
-    form.onsubmit = async e => {
-      e.preventDefault();
-      await addDoc(collection(db, "transactions"), {
-        uid: auth.currentUser.uid,
-        desc: desc.value,
-        value: Number(value.value),
-        type: type.value,
-        date: date.value
-      });
-      form.reset();
-    };
-
-    function loadData(uid) {
-      const q = query(collection(db, "transactions"), where("uid", "==", uid));
-      onSnapshot(q, snap => {
-        list.innerHTML = "";
-        totalIn = totalOut = 0;
-        snap.forEach(docu => {
-          const d = docu.data();
-          if (d.type === "in") totalIn += d.value;
-          else totalOut += d.value;
-
-          list.innerHTML += `
-            <tr>
-              <td>${d.desc}</td>
-              <td>${d.type === "in" ? "Receita" : "Despesa"}</td>
-              <td>R$ ${d.value.toFixed(2)}</td>
-              <td>
-                <button onclick="deleteItem('${docu.id}')" class="text-red-500">
-                  <i class="fa fa-trash"></i>
-                </button>
-              </td>
-            </tr>`;
-        });
-        balanceEl.innerText = `Saldo: R$ ${(totalIn - totalOut).toFixed(2)}`;
-        drawChart();
-      });
-    }
-
-    window.deleteItem = async id => {
-      await deleteDoc(doc(db, "transactions", id));
-    };
-
-    function drawChart() {
-      if (chart) chart.destroy();
-      chart = new Chart(document.getElementById("chart"), {
-        type: "bar",
-        data: {
-          labels: ["Receitas", "Despesas"],
-          datasets: [{
-            data: [totalIn, totalOut],
-            backgroundColor: ["#10b981", "#ef4444"]
-          }]
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gerenciador Financeiro - Lilás</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #fdfaff; 
+            color: #1e293b;
+            margin: 0;
+            overflow-x: hidden;
         }
-      });
+
+        .loader { 
+            border-top-color: #8b5cf6; 
+            animation: spinner 0.8s ease-in-out infinite; 
+        }
+        @keyframes spinner { to { transform: rotate(360deg); } }
+
+        .tab-active {
+            color: #7c3aed;
+            background: #f5f3ff;
+            border-radius: 12px;
+        }
+
+        .input-dark-text { 
+            color: #1e1b4b !important; 
+            font-weight: 600; 
+        }
+
+        .animate-in {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-overlay {
+            background: rgba(46, 16, 101, 0.4);
+            backdrop-filter: blur(8px);
+        }
+
+        @media (max-width: 768px) {
+            .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
+
+        .profile-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: inherit;
+        }
+
+        input[type="month"], input[type="date"] {
+            appearance: none;
+            -webkit-appearance: none;
+            min-height: 40px;
+        }
+        
+        .card-stat {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .card-stat:hover {
+            transform: translateY(-4px);
+            filter: brightness(0.98);
+        }
+        .card-stat:active {
+            transform: scale(0.98);
+        }
+
+        .month-selector-btn {
+            transition: all 0.2s;
+        }
+        .month-selector-btn:hover {
+            background-color: rgba(139, 92, 246, 0.1);
+            color: #7c3aed;
+        }
+    </style>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom": "https://esm.sh/react-dom@18.2.0",
+        "firebase/app": "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js",
+        "htm": "https://esm.sh/htm@3.1.1"
+      }
     }
-  </script>
+    </script>
 </head>
+<body>
+    <div id="root"></div>
 
-<body class="bg-slate-100">
+    <script type="module">
+        import React, { useState, useEffect, useMemo } from 'react';
+        import ReactDOM from 'react-dom';
+        import htm from 'htm';
+        import { initializeApp } from "firebase/app";
+        import { 
+            getFirestore, doc, setDoc, getDoc, collection, 
+            addDoc, query, where, onSnapshot, deleteDoc, updateDoc
+        } from "firebase/firestore";
 
-<!-- LOGIN -->
-<div id="login" class="min-h-screen flex items-center justify-center">
-  <div class="bg-white p-8 rounded-xl shadow w-96">
-    <h1 class="text-2xl font-bold mb-4 text-center">FinanFlow</h1>
-    <input id="email" class="w-full p-2 border mb-2" placeholder="Email">
-    <input id="password" type="password" class="w-full p-2 border mb-4" placeholder="Senha">
-    <button id="btnLogin" class="w-full bg-indigo-600 text-white p-2 rounded mb-2">Entrar</button>
-    <button id="btnRegister" class="w-full border p-2 rounded">Criar Conta</button>
-  </div>
-</div>
+        const html = htm.bind(React.createElement);
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
+            authDomain: "planilha-fina.firebaseapp.com",
+            projectId: "planilha-fina",
+            storageBucket: "planilha-fina.firebasestorage.app",
+            messagingSenderId: "288466007894",
+            appId: "1:288466007894:web:e917cc6eeac421671188f7"
+        };
 
-<!-- APP -->
-<div id="app" class="hidden">
-  <header class="bg-white p-4 shadow flex justify-between">
-    <h2 class="font-bold">Controle Financeiro</h2>
-    <button id="logout" class="text-red-500">Sair</button>
-  </header>
+        const fbApp = initializeApp(firebaseConfig);
+        const db = getFirestore(fbApp);
 
-  <main class="p-6 max-w-4xl mx-auto">
-    <h3 id="balance" class="text-2xl font-bold mb-4">Saldo</h3>
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [transactions, setTransactions] = useState([]);
+            const [showModal, setShowModal] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            
+            const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
+            const [typeFilter, setTypeFilter] = useState('ALL');
 
-    <canvas id="chart" class="mb-6"></canvas>
+            const [newTx, setNewTx] = useState({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] });
+            
+            const [email, setEmail] = useState('');
+            const [pass, setPass] = useState('');
+            const [rememberMe, setRememberMe] = useState(true);
+            const [isRegistering, setIsRegistering] = useState(false);
+            const [authLoading, setAuthLoading] = useState(false);
+            const [authError, setAuthError] = useState('');
 
-    <form id="form" class="grid grid-cols-4 gap-2 mb-6">
-      <input id="desc" required class="p-2 border" placeholder="Descrição">
-      <input id="value" required type="number" step="0.01" class="p-2 border" placeholder="Valor">
-      <select id="type" class="p-2 border">
-        <option value="in">Receita</option>
-        <option value="out">Despesa</option>
-      </select>
-      <input id="date" type="date" class="p-2 border" required>
-      <button class="col-span-4 bg-indigo-600 text-white p-2 rounded">Adicionar</button>
-    </form>
+            useEffect(() => {
+                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+                if (!sid) {
+                    setLoading(false);
+                    return;
+                }
 
-    <table class="w-full bg-white rounded shadow">
-      <thead>
-        <tr class="bg-slate-200">
-          <th>Descrição</th>
-          <th>Tipo</th>
-          <th>Valor</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="list"></tbody>
-    </table>
-  </main>
-</div>
+                const userRef = doc(db, "users", sid);
+                const unsubUser = onSnapshot(userRef, (s) => {
+                    if (s.exists()) {
+                        setUser({ id: s.id, ...s.data() });
+                        setLoading(false);
+                    } else {
+                        handleLogout();
+                    }
+                });
 
+                const q = query(collection(db, "transactions"), where("userId", "==", sid));
+                const unsubTx = onSnapshot(q, (s) => {
+                    const data = s.docs.map(d => ({id: d.id, ...d.data()}))
+                                       .sort((a, b) => new Date(b.date) - new Date(a.date));
+                    setTransactions(data);
+                });
+
+                return () => { unsubUser(); unsubTx(); };
+            }, []);
+
+            const handleAuth = async (e) => {
+                e.preventDefault();
+                setAuthLoading(true);
+                setAuthError('');
+                const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+                
+                try {
+                    const ref = doc(db, "users", safeId);
+                    const s = await getDoc(ref);
+
+                    if (isRegistering) {
+                        if (s.exists()) {
+                            setAuthError("Este e-mail já possui uma conta.");
+                            setIsRegistering(false);
+                        } else {
+                            const newUserObj = { 
+                                email: email.toLowerCase().trim(), 
+                                password: pass, 
+                                appName: 'Meu Financeiro',
+                                photoURL: '',
+                                createdAt: new Date().toISOString()
+                            };
+                            await setDoc(ref, newUserObj);
+                            if (rememberMe) localStorage.setItem('belaju_sid', safeId);
+                            else sessionStorage.setItem('belaju_sid', safeId);
+                            setUser({ id: safeId, ...newUserObj });
+                        }
+                    } else {
+                        if (s.exists() && s.data().password === pass) {
+                            if (rememberMe) localStorage.setItem('belaju_sid', safeId);
+                            else sessionStorage.setItem('belaju_sid', safeId);
+                            setUser({ id: safeId, ...s.data() });
+                        } else {
+                            setAuthError("Usuário ou senha inválidos.");
+                        }
+                    }
+                } catch (err) {
+                    setAuthError("Erro de conexão.");
+                } finally {
+                    setAuthLoading(false);
+                }
+            };
+
+            const handleLogout = () => {
+                localStorage.removeItem('belaju_sid');
+                sessionStorage.removeItem('belaju_sid');
+                setUser(null);
+                setLoading(false);
+            };
+
+            const changeMonth = (offset) => {
+                const [year, month] = filterMonth.split('-').map(Number);
+                const date = new Date(year, month - 1 + offset, 1);
+                setFilterMonth(date.toISOString().substring(0, 7));
+            };
+
+            const openEdit = (tx) => {
+                setEditingId(tx.id);
+                setNewTx({ 
+                    description: tx.description, 
+                    amount: tx.amount, 
+                    type: tx.type, 
+                    date: tx.date.split('T')[0] 
+                });
+                setShowModal(true);
+            };
+
+            const saveTransaction = async (e) => {
+                e.preventDefault();
+                const amountValue = parseFloat(newTx.amount.toString().replace(',', '.'));
+                if (isNaN(amountValue)) return alert("Valor inválido");
+                const finalDate = new Date(newTx.date + "T12:00:00").toISOString();
+
+                try {
+                    if (editingId) {
+                        await updateDoc(doc(db, "transactions", editingId), {
+                            ...newTx,
+                            amount: amountValue,
+                            date: finalDate
+                        });
+                    } else {
+                        await addDoc(collection(db, "transactions"), {
+                            ...newTx,
+                            amount: amountValue,
+                            date: finalDate,
+                            userId: user.id
+                        });
+                    }
+                    setShowModal(false);
+                    setEditingId(null);
+                    setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] });
+                } catch (e) {
+                    alert("Erro ao salvar.");
+                }
+            };
+
+            const handlePhotoUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64 = reader.result;
+                    await updateDoc(doc(db, "users", user.id), { photoURL: base64 });
+                    setUser({...user, photoURL: base64});
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const filteredTransactions = useMemo(() => {
+                let list = transactions;
+                if (filterMonth) {
+                    list = list.filter(t => t.date.startsWith(filterMonth));
+                }
+                if (typeFilter !== 'ALL') {
+                    list = list.filter(t => t.type === typeFilter);
+                }
+                return list;
+            }, [transactions, filterMonth, typeFilter]);
+
+            const totals = useMemo(() => {
+                const monthOnly = transactions.filter(t => t.date.startsWith(filterMonth));
+                return monthOnly.reduce((acc, t) => {
+                    if (t.type === 'INCOME') acc.inc += t.amount;
+                    else acc.exp += t.amount;
+                    acc.bal = acc.inc - acc.exp;
+                    return acc;
+                }, { inc: 0, exp: 0, bal: 0 });
+            }, [transactions, filterMonth]);
+
+            const exportPDF = () => {
+                const { jsPDF } = window.jspdf;
+                const docPDF = new jsPDF();
+                docPDF.setFontSize(20);
+                docPDF.setTextColor(124, 58, 237);
+                docPDF.text(user.appName, 14, 20);
+                docPDF.setFontSize(10);
+                docPDF.setTextColor(100);
+                docPDF.text(`Relatório Financeiro (${filterMonth}) - ${new Date().toLocaleDateString()}`, 14, 28);
+                const rows = filteredTransactions.map(t => [new Date(t.date).toLocaleDateString('pt-BR'), t.description, t.type === 'INCOME' ? 'Receita' : 'Despesa', `R$ ${t.amount.toFixed(2)}`]);
+                docPDF.autoTable({ startY: 35, head: [['Data', 'Descrição', 'Tipo', 'Valor']], body: rows, theme: 'striped', headStyles: { fillColor: [124, 58, 237] } });
+                docPDF.save(`relatorio-${filterMonth}.pdf`);
+            };
+
+            if (loading) return html`
+                <div className="h-screen flex flex-col items-center justify-center bg-white">
+                    <div className="w-12 h-12 border-4 border-slate-100 loader rounded-full mb-4"></div>
+                    <p className="text-violet-600 font-bold text-xs uppercase tracking-widest">Carregando...</p>
+                </div>`;
+
+            if (!user) return html`
+                <div className="min-h-screen flex items-center justify-center bg-[#fdfaff] p-4">
+                    <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl shadow-violet-100 w-full max-w-md border border-violet-50">
+                        <div className="text-center mb-10">
+                            <div className="w-16 h-16 bg-gradient-to-br from-violet-400 to-fuchsia-600 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white shadow-lg">
+                                <i className="fas fa-fingerprint text-3xl"></i>
+                            </div>
+                            <h1 className="text-3xl font-extrabold text-slate-900">${isRegistering ? 'Criar Conta' : 'Acesse sua Conta'}</h1>
+                            <p className="text-slate-400 mt-2 text-sm">Organize suas finanças agora</p>
+                        </div>
+                        ${authError && html`
+                            <div className="bg-rose-50 text-rose-600 p-4 rounded-xl text-xs font-bold mb-6 text-center border border-rose-100 animate-in">
+                                <i className="fas fa-exclamation-circle mr-2"></i> ${authError}
+                            </div>
+                        `}
+                        <form onSubmit=${handleAuth} className="space-y-4">
+                            <input type="email" required placeholder="Seu e-mail" className="input-dark-text w-full p-4 bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-2xl outline-none" value=${email} onInput=${e => setEmail(e.target.value)} />
+                            <input type="password" required placeholder="Sua senha" className="input-dark-text w-full p-4 bg-slate-50 border border-slate-200 focus:border-violet-400 rounded-2xl outline-none" value=${pass} onInput=${e => setPass(e.target.value)} />
+                            
+                            <div className="flex items-center gap-2 px-1">
+                                <input type="checkbox" id="remember" checked=${rememberMe} onChange=${e => setRememberMe(e.target.checked)} className="w-4 h-4 text-violet-600 rounded cursor-pointer" />
+                                <label htmlFor="remember" className="text-xs text-slate-500 font-medium cursor-pointer">Manter conectado neste dispositivo</label>
+                            </div>
+
+                            <button disabled=${authLoading} className="w-full py-4 bg-violet-600 text-white font-bold rounded-2xl hover:bg-violet-700 transition-all shadow-lg shadow-violet-100">
+                                ${authLoading ? 'Processando...' : (isRegistering ? 'Finalizar Cadastro' : 'Entrar')}
+                            </button>
+                            <button type="button" onClick=${() => { setIsRegistering(!isRegistering); setAuthError(''); }} className="w-full text-violet-600 font-bold text-sm pt-4 hover:underline text-center">
+                                ${isRegistering ? 'Já tenho uma conta' : 'Não tem conta? Cadastre-se grátis'}
+                            </button>
+                        </form>
+                    </div>
+                </div>`;
+
+            const UserPhoto = ({ className }) => html`
+                <div className=${`relative overflow-hidden bg-violet-100 flex items-center justify-center text-violet-400 ${className}`}>
+                    ${user.photoURL ? html`<img src=${user.photoURL} className="profile-img" />` : html`<i className="fas fa-user text-xl"></i>`}
+                </div>
+            `;
+
+            const MonthDisplay = () => {
+                const [year, month] = filterMonth.split('-');
+                const date = new Date(year, month - 1);
+                const name = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                return html`
+                    <div className="flex items-center gap-3 bg-white p-2 px-4 rounded-2xl border border-violet-100 shadow-sm animate-in">
+                        <button onClick=${() => changeMonth(-1)} className="month-selector-btn w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 transition-all">
+                            <i className="fas fa-chevron-left text-xs"></i>
+                        </button>
+                        <div className="flex flex-col items-center min-w-[120px]">
+                            <span className="text-[9px] font-black text-violet-400 uppercase tracking-widest leading-none mb-1">Período</span>
+                            <span className="text-xs font-extrabold text-violet-700 capitalize">${name}</span>
+                        </div>
+                        <button onClick=${() => changeMonth(1)} className="month-selector-btn w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 transition-all">
+                            <i className="fas fa-chevron-right text-xs"></i>
+                        </button>
+                        <div className="h-6 w-px bg-violet-50 mx-1"></div>
+                        <input type="month" value=${filterMonth} onChange=${e => setFilterMonth(e.target.value)} 
+                               className="w-8 h-8 opacity-0 absolute pointer-events-none" id="hidden-month-picker" />
+                        <label htmlFor="hidden-month-picker" className="month-selector-btn w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 cursor-pointer">
+                            <i className="fas fa-calendar-alt text-xs"></i>
+                        </label>
+                    </div>
+                `;
+            };
+
+            return html`
+                <div className="min-h-screen flex flex-col md:flex-row bg-[#fdfaff]">
+                    
+                    ${showModal && html`
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 modal-overlay animate-in">
+                            <div className="bg-white w-full max-w-md rounded-[2rem] p-8 shadow-2xl relative">
+                                <h2 className="text-xl font-bold text-slate-900 mb-6">${editingId ? 'Editar Lançamento' : 'Novo Lançamento'}</h2>
+                                <form onSubmit=${saveTransaction} className="space-y-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Descrição</label>
+                                        <input type="text" required placeholder="Ex: Mercado, Salário..." className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none"
+                                            value=${newTx.description} onInput=${e => setNewTx({...newTx, description: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Valor R$</label>
+                                        <input type="text" required placeholder="0,00" className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none"
+                                            value=${newTx.amount} onInput=${e => setNewTx({...newTx, amount: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Data</label>
+                                        <input type="date" required className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none"
+                                            value=${newTx.date} onInput=${e => setNewTx({...newTx, date: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tipo</label>
+                                        <select className="input-dark-text w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none"
+                                            value=${newTx.type} onChange=${e => setNewTx({...newTx, type: e.target.value})}>
+                                            <option value="INCOME">Receita (+)</option>
+                                            <option value="EXPENSE">Despesa (-)</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex gap-3 pt-4">
+                                        <button type="button" onClick=${() => { setShowModal(false); setEditingId(null); }} className="flex-1 py-3 font-bold text-slate-400 bg-slate-50 rounded-xl">Cancelar</button>
+                                        <button type="submit" className="flex-2 px-8 py-3 bg-violet-600 text-white font-bold rounded-xl shadow-lg">Salvar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    `}
+
+                    <aside className="hidden md:flex w-72 bg-white border-r border-violet-50 flex-col sticky top-0 h-screen">
+                        <div className="p-8 flex items-center gap-4">
+                            <${UserPhoto} className="w-12 h-12 rounded-2xl shadow-sm" />
+                            <div className="overflow-hidden">
+                                <h2 className="font-extrabold text-slate-800 truncate">${user.appName}</h2>
+                                <p className="text-[10px] text-violet-500 font-bold uppercase tracking-widest">Financeiro Pro</p>
+                            </div>
+                        </div>
+                        <nav className="flex-1 px-4 space-y-1">
+                            <button onClick=${() => setActiveTab('dashboard')} className=${`w-full flex items-center gap-4 p-4 font-bold transition-all ${activeTab === 'dashboard' ? 'tab-active' : 'text-slate-400 hover:text-violet-600'}`}>
+                                <i className="fas fa-grid-2 w-5"></i> Início
+                            </button>
+                            <button onClick=${() => { setActiveTab('transactions'); setTypeFilter('ALL'); }} className=${`w-full flex items-center gap-4 p-4 font-bold transition-all ${activeTab === 'transactions' ? 'tab-active' : 'text-slate-400 hover:text-violet-600'}`}>
+                                <i className="fas fa-receipt w-5"></i> Extrato
+                            </button>
+                            <button onClick=${() => setActiveTab('settings')} className=${`w-full flex items-center gap-4 p-4 font-bold transition-all ${activeTab === 'settings' ? 'tab-active' : 'text-slate-400 hover:text-violet-600'}`}>
+                                <i className="fas fa-cog w-5"></i> Ajustes
+                            </button>
+                        </nav>
+                        <div className="p-8 border-t border-slate-50">
+                            <button onClick=${handleLogout} className="text-rose-500 font-bold flex items-center gap-3 w-full hover:bg-rose-50 p-2 rounded-xl transition-all">
+                                <i className="fas fa-power-off"></i> Sair
+                            </button>
+                        </div>
+                    </aside>
+
+                    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex justify-around p-3 z-50">
+                        <button onClick=${() => setActiveTab('dashboard')} className=${`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-violet-600' : 'text-slate-300'}`}>
+                            <i className="fas fa-home text-lg"></i><span className="text-[10px] font-bold">Início</span>
+                        </button>
+                        <button onClick=${() => { setActiveTab('transactions'); setTypeFilter('ALL'); }} className=${`flex flex-col items-center gap-1 ${activeTab === 'transactions' ? 'text-violet-600' : 'text-slate-300'}`}>
+                            <i className="fas fa-receipt text-lg"></i><span className="text-[10px] font-bold">Extrato</span>
+                        </button>
+                        <button onClick=${() => { setEditingId(null); setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] }); setShowModal(true); }} className="flex flex-col items-center gap-1 bg-violet-600 text-white w-12 h-12 rounded-full -mt-8 shadow-xl">
+                            <i className="fas fa-plus text-xl mt-3"></i>
+                        </button>
+                        <button onClick=${() => setActiveTab('settings')} className=${`flex flex-col items-center gap-1 ${activeTab === 'settings' ? 'text-violet-600' : 'text-slate-300'}`}>
+                            <i className="fas fa-user-cog text-lg"></i><span className="text-[10px] font-bold">Ajustes</span>
+                        </button>
+                        <button onClick=${handleLogout} className="flex flex-col items-center gap-1 text-rose-400">
+                            <i className="fas fa-power-off text-lg"></i><span className="text-[10px] font-bold">Sair</span>
+                        </button>
+                    </nav>
+
+                    <main className="flex-1 pb-24 md:pb-10 overflow-x-hidden">
+                        <header className="p-6 md:p-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                                <div>
+                                    <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                                        ${activeTab === 'dashboard' && 'Minhas Finanças'}
+                                        ${activeTab === 'transactions' && 'Extrato Detalhado'}
+                                        ${activeTab === 'settings' && 'Personalização'}
+                                    </h1>
+                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">${user.email}</p>
+                                </div>
+                                <${MonthDisplay} />
+                            </div>
+                            <div className="flex gap-3 w-full md:w-auto">
+                                <button onClick=${exportPDF} className="flex-1 md:flex-none bg-white border border-violet-100 text-violet-600 px-5 py-3 rounded-xl font-bold text-sm shadow-sm hover:bg-violet-50 transition-all">
+                                    <i className="fas fa-file-pdf mr-2"></i> PDF
+                                </button>
+                                <button onClick=${() => { setEditingId(null); setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] }); setShowModal(true); }} className="hidden md:block bg-violet-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-violet-100 hover:bg-violet-700 transition-all">
+                                    <i className="fas fa-plus mr-2"></i> ADICIONAR
+                                </button>
+                            </div>
+                        </header>
+
+                        <div className="px-6 md:px-10">
+                            ${activeTab === 'dashboard' && html`
+                                <div className="space-y-6 animate-in">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                                        <div onClick=${() => { setActiveTab('transactions'); setTypeFilter('INCOME'); }} className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-50 shadow-sm card-stat">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entradas</p>
+                                            <p className="text-2xl md:text-3xl font-extrabold text-emerald-500">R$ ${totals.inc.toFixed(2)}</p>
+                                            <p className="text-[9px] text-slate-300 font-bold mt-2">Toque para filtrar entradas</p>
+                                        </div>
+                                        <div onClick=${() => { setActiveTab('transactions'); setTypeFilter('EXPENSE'); }} className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-50 shadow-sm card-stat">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Saídas</p>
+                                            <p className="text-2xl md:text-3xl font-extrabold text-rose-500">R$ ${totals.exp.toFixed(2)}</p>
+                                            <p className="text-[9px] text-slate-300 font-bold mt-2">Toque para filtrar saídas</p>
+                                        </div>
+                                        <div className=${`p-6 md:p-8 rounded-[2rem] text-white shadow-xl shadow-violet-100 transition-colors duration-500 ${totals.bal >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                                            <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">Saldo Líquido</p>
+                                            <p className="text-2xl md:text-3xl font-extrabold">R$ ${totals.bal.toFixed(2)}</p>
+                                            <p className="text-[9px] text-white/40 font-bold mt-2">Referente ao mês selecionado</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-[2rem] border border-slate-50 shadow-sm overflow-hidden">
+                                        <div className="p-6 border-b border-slate-50 bg-slate-50/20 flex justify-between items-center">
+                                            <h3 className="font-bold text-slate-800">Recentes no Período</h3>
+                                            <button onClick=${() => { setActiveTab('transactions'); setTypeFilter('ALL'); }} className="text-violet-600 text-xs font-bold uppercase">Ver Extrato</button>
+                                        </div>
+                                        <div className="divide-y divide-slate-50">
+                                            ${filteredTransactions.length === 0 ? html`<div className="p-16 text-center text-slate-300 text-sm font-bold uppercase">Nenhum registro encontrado</div>` : 
+                                              filteredTransactions.slice(0, 5).map(t => html`
+                                                <div className="flex items-center justify-between p-5 md:p-6 hover:bg-violet-50/20 transition-all group">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className=${`w-10 h-10 rounded-xl flex items-center justify-center ${t.type === 'INCOME' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                                                            <i className=${t.type === 'INCOME' ? 'fas fa-arrow-up text-xs' : 'fas fa-arrow-down text-xs'}></i>
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-slate-800 text-sm md:text-base truncate max-w-[150px]">${t.description}</p>
+                                                            <p className="text-[10px] text-slate-400">${new Date(t.date).toLocaleDateString('pt-BR')}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <p className=${`font-bold ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-slate-900'}`}>
+                                                            ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
+                                                        </p>
+                                                        <button onClick=${() => openEdit(t)} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-violet-500 hidden md:block">
+                                                            <i className="fas fa-edit"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `)}
+                                        </div>
+                                    </div>
+                                </div>
+                            `}
+
+                            ${activeTab === 'transactions' && html`
+                                <div className="space-y-4 animate-in">
+                                    <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+                                        <div className="flex gap-2">
+                                            <button onClick=${() => setTypeFilter('ALL')} className=${`px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase transition-all ${typeFilter === 'ALL' ? 'bg-violet-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Todos</button>
+                                            <button onClick=${() => setTypeFilter('INCOME')} className=${`px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase transition-all ${typeFilter === 'INCOME' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Entradas</button>
+                                            <button onClick=${() => setTypeFilter('EXPENSE')} className=${`px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase transition-all ${typeFilter === 'EXPENSE' ? 'bg-rose-500 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}>Saídas</button>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${filteredTransactions.length} movimentações encontradas</span>
+                                    </div>
+
+                                    <div className="bg-white rounded-[2rem] border border-slate-50 shadow-sm table-container overflow-hidden">
+                                        <table className="w-full text-left min-w-[500px]">
+                                            <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                                                <tr>
+                                                    <th className="px-6 py-5">Data</th>
+                                                    <th className="px-6 py-5">Descrição</th>
+                                                    <th className="px-6 py-5">Valor</th>
+                                                    <th className="px-6 py-5 text-center">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                ${filteredTransactions.length === 0 ? html`<tr><td colSpan="4" className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest">Nenhum dado encontrado</td></tr>` : 
+                                                  filteredTransactions.map(t => html`
+                                                    <tr key=${t.id} className="hover:bg-violet-50/20 transition-all group">
+                                                        <td className="px-6 py-4 text-xs font-medium text-slate-400">${new Date(t.date).toLocaleDateString('pt-BR')}</td>
+                                                        <td className="px-6 py-4 font-bold text-slate-700">${t.description}</td>
+                                                        <td className=${`px-6 py-4 font-bold ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                            ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <div className="flex justify-center gap-3">
+                                                                <button onClick=${() => openEdit(t)} title="Editar" className="text-slate-300 hover:text-violet-500 transition-colors p-2">
+                                                                    <i className="fas fa-edit"></i>
+                                                                </button>
+                                                                <button onClick=${() => { if(confirm("Deseja excluir este registro?")) deleteDoc(doc(db, "transactions", t.id)); }} title="Excluir" className="text-slate-300 hover:text-rose-500 transition-colors p-2">
+                                                                    <i className="fas fa-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                `)}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            `}
+
+                            ${activeTab === 'settings' && html`
+                                <div className="max-w-2xl space-y-6 animate-in">
+                                    <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-sm border border-slate-50">
+                                        <h3 className="text-xl font-bold text-slate-900 mb-8 tracking-tight">Foto de Perfil</h3>
+                                        <div className="flex flex-col md:flex-row items-center gap-8">
+                                            <${UserPhoto} className="w-24 h-24 rounded-[2rem] shadow-lg shadow-violet-100" />
+                                            <div className="flex-1 w-full text-center md:text-left">
+                                                <label className="block bg-violet-50 text-violet-600 px-6 py-3 rounded-xl font-bold text-sm text-center cursor-pointer hover:bg-violet-100 transition-all border border-violet-100">
+                                                    <i className="fas fa-camera mr-2"></i> Alterar Imagem
+                                                    <input type="file" accept="image/*" className="hidden" onChange=${handlePhotoUpload} />
+                                                </label>
+                                                <p className="text-[10px] text-slate-400 mt-3 uppercase font-bold tracking-widest">Formatos aceitos: JPG, PNG</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-sm border border-slate-50">
+                                        <h3 className="text-xl font-bold text-slate-900 mb-8 tracking-tight">Personalizar App</h3>
+                                        <div className="space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Título Exibido</label>
+                                                <div className="flex flex-col md:flex-row gap-3">
+                                                    <input id="app-name-input" type="text" defaultValue=${user.appName} className="input-dark-text flex-1 p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-violet-400 transition-colors" />
+                                                    <button onClick=${() => {
+                                                        const val = document.getElementById('app-name-input').value;
+                                                        updateDoc(doc(db, "users", user.id), { appName: val });
+                                                        setUser({...user, appName: val});
+                                                    }} className="bg-violet-600 text-white px-8 py-4 rounded-xl font-bold text-sm hover:bg-violet-700 transition-all">Salvar</button>
+                                                </div>
+                                            </div>
+                                            <div className="pt-6 border-t border-slate-50 flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status da Conta</p>
+                                                    <p className="text-xs text-slate-500">Logado como: <span className="font-bold text-slate-800">${user.email}</span></p>
+                                                </div>
+                                                <span className="bg-emerald-100 text-emerald-600 text-[9px] font-black px-3 py-1.5 rounded-full uppercase">Sincronizado</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `}
+                        </div>
+                    </main>
+                </div>`;
+        };
+
+        ReactDOM.render(html`<${App} />`, document.getElementById('root'));
+    </script>
 </body>
 </html>

@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gerenciador Financeiro Pro</title>
     
+    <!-- Ícones para atalhos (PWA / Mobile Home Screen) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💲</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%238b5cf6%22 rx=%2220%22/><text y=%22.75em%22 x=%22.1em%22 font-size=%2270%22 fill=%22white%22>$</text></svg>">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Finanças">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -148,8 +154,7 @@
                     if (s.exists()) {
                         const userData = { id: s.id, ...s.data() };
                         
-                        // LÓGICA DE BLOQUEIO KIWIFY
-                        // Se não for o Admin Niklaus e o status não for pago, bloqueia
+                        // LÓGICA DE BLOQUEIO KIWIFY / MANUAL
                         if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
                              alert("Acesso Bloqueado: Pagamento não identificado ou reembolsado.");
                              handleLogout();
@@ -203,25 +208,23 @@
                     if (isRegistering) {
                         if (s.exists()) alert("E-mail já cadastrado");
                         else {
-                            // Novos usuários começam com status 'pending' até que o Webhook do Kiwify atualize
                             await setDoc(ref, { 
                                 email, 
                                 password: pass, 
                                 appName: 'Meu Perfil', 
                                 photoURL: '',
-                                status: 'pending' // Aguardando Webhook Kiwify
+                                status: 'pending' 
                             });
-                            alert("Conta criada! O acesso será liberado após a confirmação do pagamento no Kiwify.");
+                            alert("Conta criada! O acesso será liberado após a confirmação do pagamento ou liberação manual.");
                         }
                     } else {
                         if (s.exists() && s.data().password === pass) {
-                            // Verifica status no login
                             if (s.data().status === 'paid') {
                                 const storage = keepConnected ? localStorage : sessionStorage;
                                 storage.setItem('belaju_sid', safeId);
                                 startDataSync(safeId);
                             } else {
-                                alert("Acesso restrito: Sua compra no Kiwify ainda não foi aprovada ou foi reembolsada.");
+                                alert("Acesso restrito: Sua compra ainda não foi aprovada ou o acesso foi revogado.");
                             }
                         } else alert("Dados inválidos");
                     }
@@ -344,7 +347,7 @@
                     <div className="bg-slate-900 p-10 rounded-[2.5rem] shadow-2xl w-full max-sm border border-slate-800">
                         <div className="text-center mb-10">
                             <div className="w-16 h-16 bg-violet-600 rounded-3xl flex items-center justify-center mx-auto mb-6 text-white shadow-xl rotate-3">
-                                <i className="fas fa-wallet text-3xl"></i>
+                                <i className="fas fa-dollar-sign text-3xl"></i>
                             </div>
                             <h1 className="text-3xl font-extrabold text-white tracking-tight">${isRegistering ? 'Nova Conta' : 'Acessar'}</h1>
                         </div>

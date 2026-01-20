@@ -71,6 +71,14 @@
         
         input, select { font-size: 16px !important; color: white !important; }
         input::placeholder { color: #94a3b8 !important; }
+
+        /* Floating Button for Desktop */
+        .fab-desktop {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            z-index: 50;
+        }
     </style>
 
     <script type="importmap">
@@ -209,6 +217,12 @@
                     type: tx.type, 
                     date: tx.date.split('T')[0] 
                 });
+                setShowModal(true);
+            };
+
+            const openAddTransaction = () => {
+                setEditingId(null);
+                setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] });
                 setShowModal(true);
             };
 
@@ -375,7 +389,7 @@
 
                             <nav className="space-y-1">
                                 <button onClick=${() => setActiveTab('dashboard')} className=${`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition-all ${activeTab === 'dashboard' ? 'sidebar-item-active' : 'text-slate-500 hover:bg-slate-800/50'}`}>
-                                    <i className="fas fa-th-large w-5"></i> Dashboard
+                                    <i className="fas fa-home w-5"></i> Início
                                 </button>
                                 <button onClick=${() => setActiveTab('transactions')} className=${`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition-all ${activeTab === 'transactions' ? 'sidebar-item-active' : 'text-slate-500 hover:bg-slate-800/50'}`}>
                                     <i className="fas fa-list w-5"></i> Extrato
@@ -392,6 +406,11 @@
                             </button>
                         </div>
                     </aside>
+
+                    <!-- Botão Adicionar Desktop -->
+                    <button onClick=${openAddTransaction} className="hidden md:flex fab-desktop bg-violet-600 text-white w-16 h-16 rounded-[1.5rem] shadow-2xl items-center justify-center hover:scale-110 active:scale-95 transition-all border-4 border-slate-950">
+                        <i className="fas fa-plus text-xl"></i>
+                    </button>
 
                     <main className="flex-1 p-5 md:p-12 pb-32">
                         
@@ -542,7 +561,7 @@
                             <i className="fas fa-list text-lg"></i>
                             <span className="text-[8px] font-black uppercase tracking-widest">Extrato</span>
                         </button>
-                        <button onClick=${() => {setEditingId(null); setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] }); setShowModal(true);}} 
+                        <button onClick=${openAddTransaction} 
                             className="bg-violet-600 text-white w-14 h-14 rounded-[1.5rem] -mt-10 shadow-2xl flex items-center justify-center border-4 border-slate-950 active:scale-90 transition-all">
                             <i className="fas fa-plus text-xl"></i>
                         </button>

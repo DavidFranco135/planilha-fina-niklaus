@@ -5,6 +5,830 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Finanças</title>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finanças</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/552/552817.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/552/552817.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        :root {
+            --primary: #8b5cf6;
+            --bg-dark: #0f172a;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-dark); 
+            color: #f1f5f9;
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .loader { 
+            border-top-color: var(--primary); 
+            animation: spinner 0.8s ease-in-out infinite; 
+        }
+        @keyframes spinner { to { transform: rotate(360deg); } }
+
+        .animate-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .sidebar-item-active {
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0) 100%);
+            color: var(--primary);
+            border-right: 3px solid var(--primary);
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        input, select { font-size: 16px !important; color: white !important; }
+        
+        @media (max-width: 640px) {
+            .text-3xl { font-size: 1.5rem !important; }
+            .p-8 { padding: 1.25rem !important; }
+            .p-10 { padding: 1.5rem !important; }
+            .rounded-[2.5rem] { border-radius: 1.5rem !important; }
+            .rounded-[3rem] { border-radius: 2rem !important; }
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom": "https://esm.sh/react-dom@18.2.0",
+        "firebase/app": "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js",
+        "htm": "https://esm.sh/htm@3.1.1"
+      }
+    }
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="module">
+        import React, { useState, useEffect, useMemo, useRef } from 'react';
+        import ReactDOM from 'react-dom';
+        import htm from 'htm';
+        import { initializeApp } from "firebase/app";
+        import { 
+            getFirestore, doc, setDoc, getDoc, collection, 
+            addDoc, query, where, onSnapshot, deleteDoc, updateDoc, writeBatch, serverTimestamp
+        } from "firebase/firestore";
+
+        const html = htm.bind(React.createElement);
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
+            authDomain: "planilha-fina.firebaseapp.com",
+            projectId: "planilha-fina",
+            storageBucket: "planilha-fina.firebasestorage.app",
+            messagingSenderId: "288466007894",
+            appId: "1:288466007894:web:e917cc6eeac421671188f7"
+        };
+
+        const fbApp = initializeApp(firebaseConfig);
+        const db = getFirestore(fbApp);
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [transactions, setTransactions] = useState([]);
+            const [showModal, setShowModal] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
+            const [typeFilter, setTypeFilter] = useState('ALL');
+            const [methodFilter, setMethodFilter] = useState('ALL');
+            const [keepConnected, setKeepConnected] = useState(true);
+            
+            const [balanceMode, setBalanceMode] = useState('MONTHLY');
+
+            // Filtro de período personalizado para consulta total
+            const [accumStart, setAccumStart] = useState('');
+            const [accumEnd, setAccumEnd] = useState('');
+            const [showCustomPeriod, setShowCustomPeriod] = useState(false);
+
+            const fileInputPrincipalRef = useRef(null);
+            const fileInputSecondaryRef = useRef(null);
+
+            const [newTx, setNewTx] = useState({ 
+                description: '', amount: '', type: 'INCOME', 
+                date: new Date().toISOString().split('T')[0],
+                method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
+            });
+
+            const [email, setEmail] = useState('');
+            const [pass, setPass] = useState('');
+            const [showPass, setShowPass] = useState(false);
+            const [isRegistering, setIsRegistering] = useState(false);
+            const [authLoading, setAuthLoading] = useState(false);
+
+            const [profileName, setProfileName] = useState('');
+            const [secondaryName, setSecondaryName] = useState('');
+            const [profilePhoto, setProfilePhoto] = useState('');
+            const [secondaryPhoto, setSecondaryPhoto] = useState('');
+
+            const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
+
+            const startDataSync = (sid) => {
+                setLoading(true);
+                const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+                    if (s.exists()) {
+                        const userData = { id: s.id, ...s.data() };
+                        if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
+                             alert("Acesso Bloqueado.");
+                             handleLogout();
+                             return;
+                        }
+                        setUser(userData);
+                        setProfileName(userData.appName || 'Meu Perfil');
+                        setSecondaryName(userData.secondaryName || 'Conta 2');
+                        setProfilePhoto(userData.photoURL || '');
+                        setSecondaryPhoto(userData.secondaryPhotoURL || '');
+                    } else handleLogout();
+                });
+
+                const q = query(collection(db, "transactions"), where("userId", "==", sid));
+                const unsubTx = onSnapshot(q, (s) => {
+                    const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
+                    setTransactions(docs.sort((a, b) => {
+                        const dateA = a.createdAt?.seconds || 0;
+                        const dateB = b.createdAt?.seconds || 0;
+                        return dateB - dateA;
+                    }));
+                    setLoading(false);
+                });
+                return () => { unsubUser(); unsubTx(); };
+            };
+
+            useEffect(() => {
+                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+                if (sid) return startDataSync(sid);
+                setLoading(false);
+            }, []);
+
+            const handleAuth = async (e) => {
+                e.preventDefault();
+                setAuthLoading(true);
+                const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+                try {
+                    const ref = doc(db, "users", safeId);
+                    const s = await getDoc(ref);
+                    if (isRegistering) {
+                        if (s.exists()) alert("E-mail já cadastrado");
+                        else {
+                            await setDoc(ref, { 
+                                email, 
+                                password: pass, 
+                                appName: 'Meu Perfil', 
+                                secondaryName: 'Conta 2', 
+                                photoURL: '', 
+                                secondaryPhotoURL: '',
+                                status: 'pending' 
+                            });
+                            alert("Conta criada!");
+                        }
+                    } else {
+                        if (s.exists() && s.data().password === pass) {
+                            if (s.data().status === 'paid' || email.toLowerCase() === 'niklaus') {
+                                const storage = keepConnected ? localStorage : sessionStorage;
+                                storage.setItem('belaju_sid', safeId);
+                                startDataSync(safeId);
+                            } else alert("Acesso restrito.");
+                        } else alert("Dados inválidos");
+                    }
+                } catch (err) { alert("Erro de conexão"); }
+                finally { setAuthLoading(false); }
+            };
+
+            const handleLogout = () => {
+                localStorage.removeItem('belaju_sid');
+                sessionStorage.removeItem('belaju_sid');
+                setUser(null);
+                setTransactions([]);
+                setLoading(false);
+            };
+
+            const changeMonth = (offset) => {
+                const [year, month] = filterMonth.split('-').map(Number);
+                const date = new Date(year, month - 1 + offset, 1);
+                setFilterMonth(date.toISOString().substring(0, 7));
+                // Desativar período customizado se mudar de mês para não confundir
+                if (!accumStart || !accumEnd) {
+                    setBalanceMode('MONTHLY');
+                }
+            };
+
+            const openEdit = (tx) => {
+                setEditingId(tx.id);
+                setNewTx({ 
+                    ...tx, 
+                    amount: tx.amount.toString().replace('.', ','),
+                    date: tx.date.split('T')[0]
+                });
+                setShowModal(true);
+            };
+
+            const openAddTransaction = (secondary = false) => {
+                setEditingId(null);
+                setNewTx({ 
+                    description: '', amount: '', type: 'EXPENSE', 
+                    date: new Date().toISOString().split('T')[0], 
+                    method: 'PIX', isPaid: true, installments: 1,
+                    isSecondary: secondary
+                });
+                setShowModal(true);
+            };
+
+            const saveTransaction = async (e) => {
+                e.preventDefault();
+                const totalAmountInput = parseFloat(newTx.amount.toString().replace(',', '.'));
+                const instCount = parseInt(newTx.installments) || 1;
+                try {
+                    if (editingId) {
+                        await updateDoc(doc(db, "transactions", editingId), { 
+                            ...newTx, amount: totalAmountInput, 
+                            date: new Date(newTx.date + "T12:00:00").toISOString() 
+                        });
+                    } else if (instCount > 1 && newTx.method === 'CREDITO' && newTx.type === 'EXPENSE') {
+                        const batch = writeBatch(db);
+                        const baseDate = new Date(newTx.date + "T12:00:00");
+                        const installmentValue = totalAmountInput / instCount;
+                        
+                        for (let i = 0; i < instCount; i++) {
+                            const pDate = new Date(baseDate);
+                            pDate.setMonth(baseDate.getMonth() + i);
+                            const newDocRef = doc(collection(db, "transactions"));
+                            batch.set(newDocRef, {
+                                ...newTx,
+                                amount: installmentValue,
+                                totalValue: totalAmountInput,
+                                currentInstallment: i + 1,
+                                totalInstallments: instCount,
+                                date: pDate.toISOString(),
+                                userId: user.id,
+                                installments: 1,
+                                createdAt: serverTimestamp()
+                            });
+                        }
+                        await batch.commit();
+                    } else {
+                        await addDoc(collection(db, "transactions"), { 
+                            ...newTx, amount: totalAmountInput, 
+                            date: new Date(newTx.date + "T12:00:00").toISOString(), 
+                            userId: user.id,
+                            createdAt: serverTimestamp()
+                        });
+                    }
+                    setShowModal(false);
+                } catch (e) { alert("Erro ao salvar"); }
+            };
+
+            const handlePhotoUpload = (e, target) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (target === 'principal') setProfilePhoto(reader.result);
+                    else setSecondaryPhoto(reader.result);
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const currentTransactions = useMemo(() => {
+                let base;
+                if (activeTab === 'transactions') {
+                    base = viewSecondaryTransactions ? transactions.filter(t => t.isSecondary) : transactions.filter(t => !t.isSecondary);
+                } else {
+                    base = activeTab === 'secondary' ? transactions.filter(t => t.isSecondary) : transactions.filter(t => !t.isSecondary);
+                }
+
+                // Se houver um período personalizado ativo no Dashboard e estivermos visualizando "Últimas Atividades" do período
+                if (activeTab === 'dashboard' && balanceMode === 'ACCUMULATED' && accumStart && accumEnd) {
+                    return base.filter(t => {
+                        const d = t.date.split('T')[0];
+                        return d >= accumStart && d <= accumEnd;
+                    });
+                }
+
+                return base.filter(t => t.date.startsWith(filterMonth))
+                           .filter(t => typeFilter === 'ALL' ? true : t.type === typeFilter)
+                           .filter(t => methodFilter === 'ALL' ? true : t.method === methodFilter);
+            }, [transactions, activeTab, filterMonth, typeFilter, methodFilter, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
+
+            const totals = useMemo(() => {
+                const base = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) 
+                    ? transactions.filter(t => t.isSecondary) 
+                    : transactions.filter(t => !t.isSecondary);
+
+                // Modo Período Escolhido (Acumulado Customizado)
+                if (balanceMode === 'ACCUMULATED' && accumStart && accumEnd) {
+                    const filtered = base.filter(t => {
+                        const d = t.date.split('T')[0];
+                        return d >= accumStart && d <= accumEnd;
+                    });
+                    const stats = filtered.reduce((acc, t) => {
+                        if (t.type === 'INCOME') acc.inc += t.amount;
+                        else acc.exp += t.amount;
+                        return acc;
+                    }, { inc: 0, exp: 0 });
+                    return { ...stats, bal: stats.inc - stats.exp };
+                }
+
+                // Modo Mensal Padrão
+                const monthOnly = base.filter(t => t.date.startsWith(filterMonth));
+                const stats = monthOnly.reduce((acc, t) => {
+                    if (t.type === 'INCOME') acc.inc += t.amount;
+                    else acc.exp += t.amount;
+                    return acc;
+                }, { inc: 0, exp: 0 });
+
+                // Se for Modo Acumulado Histórico (sem datas escolher)
+                if (balanceMode === 'ACCUMULATED') {
+                    const lastDay = new Date(filterMonth + '-31T23:59:59').toISOString();
+                    const histStats = base.filter(t => t.date <= lastDay).reduce((acc, t) => {
+                        if (t.type === 'INCOME') acc.inc += t.amount;
+                        else acc.exp += t.amount;
+                        return acc;
+                    }, { inc: 0, exp: 0 });
+                    return { ...histStats, bal: histStats.inc - histStats.exp };
+                }
+
+                return { ...stats, bal: stats.inc - stats.exp };
+            }, [transactions, filterMonth, activeTab, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
+
+            const navigateToExtrato = (isSecondary, filter = 'ALL') => {
+                setViewSecondaryTransactions(isSecondary);
+                setTypeFilter(filter);
+                setActiveTab('transactions');
+            };
+
+            const exportPDF = () => {
+                const { jsPDF } = window.jspdf;
+                const docPDF = new jsPDF();
+                docPDF.setFontSize(16);
+                const title = viewSecondaryTransactions ? secondaryName : profileName;
+                const periodText = (balanceMode === 'ACCUMULATED' && accumStart && accumEnd) 
+                    ? `Período: ${new Date(accumStart).toLocaleDateString()} - ${new Date(accumEnd).toLocaleDateString()}`
+                    : `Mês: ${filterMonth}`;
+                
+                docPDF.text(`${title} - Relatório Financeiro`, 14, 15);
+                docPDF.setFontSize(10);
+                docPDF.text(periodText, 14, 22);
+                
+                const rows = currentTransactions.map(t => [
+                    new Date(t.date).toLocaleDateString('pt-BR'), 
+                    t.description + (t.totalInstallments ? ` (${t.currentInstallment}/${t.totalInstallments} - Total R$ ${t.totalValue?.toLocaleString('pt-BR', {minimumFractionDigits: 2})})` : ''), 
+                    t.method || '-', 
+                    t.isPaid ? 'Sim' : 'Não',
+                    `R$ ${t.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
+                ]);
+                
+                docPDF.autoTable({ 
+                    startY: 28, 
+                    head: [['Data', 'Descrição', 'Canal', 'Pago', 'Valor']], 
+                    body: rows,
+                    theme: 'grid',
+                    headStyles: { fillColor: [139, 92, 246] }
+                });
+
+                const finalY = docPDF.lastAutoTable.finalY + 10;
+                docPDF.text(`Total Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}`, 14, finalY);
+                docPDF.text(`Total Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}`, 14, finalY + 5);
+                docPDF.text(`Saldo do Período: R$ ${totals.bal.toLocaleString('pt-BR')}`, 14, finalY + 10);
+                
+                docPDF.save(`financas-${title}-${new Date().getTime()}.pdf`);
+            };
+
+            const Avatar = ({ src, size = 'md' }) => {
+                const classes = { sm: 'w-8 h-8 rounded-lg', md: 'w-10 h-10 rounded-xl', lg: 'w-16 h-16 rounded-2xl' };
+                return html`
+                    <div className="${classes[size]} bg-slate-700 flex items-center justify-center overflow-hidden border-2 border-slate-600">
+                        ${src ? html`<img src="${src}" className="w-full h-full object-cover" />` : html`<i className="fas fa-user text-slate-500"></i>`}
+                    </div>
+                `;
+            };
+
+            if (loading) return html`<div className="h-screen flex items-center justify-center bg-slate-950"><div className="loader w-10 h-10 border-4 border-slate-800 rounded-full"></div></div>`;
+
+            if (!user) return html`
+                <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
+                    <div className="bg-slate-900 p-8 rounded-[1.5rem] shadow-2xl w-full max-w-[360px] border border-slate-800">
+                        <div className="text-center mb-8">
+                            <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-xl rotate-3">
+                                <i className="fas fa-dollar-sign text-2xl"></i>
+                            </div>
+                            <h1 className="text-2xl font-black text-white">${isRegistering ? 'Criar Conta' : 'Acessar'}</h1>
+                        </div>
+                        <form onSubmit=${handleAuth} className="space-y-4">
+                            <input type="text" required placeholder="Usuário" className="w-full p-4 bg-slate-800 border-0 rounded-xl outline-none ring-1 ring-slate-700 text-white" value=${email} onInput=${e => setEmail(e.target.value)} />
+                            <div className="relative">
+                                <input type=${showPass ? "text" : "password"} required placeholder="Senha" className="w-full p-4 bg-slate-800 border-0 rounded-xl outline-none ring-1 ring-slate-700 text-white" value=${pass} onInput=${e => setPass(e.target.value)} />
+                                <button type="button" onClick=${() => setShowPass(!showPass)} className="absolute right-4 top-4 text-slate-500"><i className=${showPass ? "fas fa-eye-slash" : "fas fa-eye"}></i></button>
+                            </div>
+                            <button className="w-full py-4 bg-violet-600 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all">
+                                ${authLoading ? '...' : isRegistering ? 'Cadastrar' : 'Entrar'}
+                            </button>
+                            <button type="button" onClick=${() => setIsRegistering(!isRegistering)} className="w-full text-violet-400 font-bold text-xs">
+                                ${isRegistering ? 'Já tenho conta' : 'Criar nova conta'}
+                            </button>
+                        </form>
+                    </div>
+                </div>`;
+
+            const currentActiveName = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? secondaryName : profileName;
+            const currentActivePhoto = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? secondaryPhoto : profilePhoto;
+
+            return html`
+                <div className="min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
+                    ${showModal && html`
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in">
+                            <div className="bg-slate-900 w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-slate-800 max-h-[90vh] overflow-y-auto">
+                                <h2 className="text-xl font-black text-white mb-6">${editingId ? 'Editar' : 'Nova'} Transação</h2>
+                                <form onSubmit=${saveTransaction} className="space-y-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Descrição</label>
+                                        <input type="text" required className="w-full p-3 bg-slate-800 border-0 rounded-xl ring-1 ring-slate-700" value=${newTx.description} onInput=${e => setNewTx({...newTx, description: e.target.value})} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                                                ${(newTx.method === 'CREDITO' && newTx.type === 'EXPENSE') ? 'Valor Total' : 'Valor'}
+                                            </label>
+                                            <input type="text" required placeholder="0,00" className="w-full p-3 bg-slate-800 border-0 rounded-xl ring-1 ring-slate-700" value=${newTx.amount} onInput=${e => setNewTx({...newTx, amount: e.target.value})} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Data</label>
+                                            <input type="date" required className="w-full p-3 bg-slate-800 border-0 rounded-xl ring-1 ring-slate-700" value=${newTx.date} onInput=${e => setNewTx({...newTx, date: e.target.value})} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Tipo</label>
+                                            <select className="w-full p-3 bg-slate-800 border-0 rounded-xl ring-1 ring-slate-700" value=${newTx.type} onChange=${e => setNewTx({...newTx, type: e.target.value})}>
+                                                <option value="INCOME">Entrada (+)</option>
+                                                <option value="EXPENSE">Saída (-)</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Canal</label>
+                                            <select className="w-full p-3 bg-slate-800 border-0 rounded-xl ring-1 ring-slate-700" value=${newTx.method} onChange=${e => setNewTx({...newTx, method: e.target.value})}>
+                                                <option value="PIX">Pix</option>
+                                                <option value="CREDITO">Crédito</option>
+                                                <option value="DEBITO">Débito</option>
+                                                <option value="DINHEIRO">Dinheiro</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    ${newTx.method === 'CREDITO' && newTx.type === 'EXPENSE' && html`
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Número de Parcelas</label>
+                                            <input type="number" min="1" className="w-full p-3 bg-slate-800 border-0 rounded-xl ring-1 ring-slate-700" value=${newTx.installments} onInput=${e => setNewTx({...newTx, installments: e.target.value})} />
+                                        </div>
+                                    `}
+                                    <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+                                        <input type="checkbox" id="pago" checked=${newTx.isPaid} onChange=${e => setNewTx({...newTx, isPaid: e.target.checked})} className="w-5 h-5 accent-emerald-500" />
+                                        <label htmlFor="pago" className="text-xs font-bold text-slate-300">Marcar como Pago</label>
+                                    </div>
+                                    <div className="flex gap-3 pt-4">
+                                        <button type="button" onClick=${() => setShowModal(false)} className="flex-1 py-3 font-bold text-slate-500">Cancelar</button>
+                                        <button type="submit" className="flex-1 py-3 bg-violet-600 text-white font-bold rounded-xl shadow-lg">Salvar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    `}
+
+                    <aside className="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-col sticky top-0 h-screen">
+                        <div className="p-8 text-center border-b border-slate-800/50">
+                             <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white mx-auto mb-2"><i className="fas fa-chart-line"></i></div>
+                             <h2 className="text-lg font-black text-white">Finanças</h2>
+                        </div>
+                        <div className="p-6 flex-1">
+                            <nav className="space-y-1">
+                                <button onClick=${() => setActiveTab('dashboard')} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-bold transition-all ${activeTab === 'dashboard' ? 'sidebar-item-active' : 'text-slate-500 hover:text-slate-300'}`}><i className="fas fa-home w-4 text-xs"></i> Início</button>
+                                <button onClick=${() => navigateToExtrato(false)} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-bold transition-all ${activeTab === 'transactions' && !viewSecondaryTransactions ? 'sidebar-item-active' : 'text-slate-500 hover:text-slate-300'}`}><i className="fas fa-list w-4 text-xs"></i> Extrato</button>
+                                <button onClick=${() => setActiveTab('secondary')} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-bold transition-all ${activeTab === 'secondary' ? 'sidebar-item-active' : 'text-slate-500 hover:text-emerald-500'}`}><i className="fas fa-wallet w-4 text-xs"></i> ${secondaryName}</button>
+                                <button onClick=${() => setActiveTab('settings')} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-bold transition-all ${activeTab === 'settings' ? 'sidebar-item-active' : 'text-slate-500 hover:text-slate-300'}`}><i className="fas fa-user-cog w-4 text-xs"></i> Ajustes</button>
+                            </nav>
+                        </div>
+                        <div className="p-8 border-t border-slate-800/50">
+                            <button onClick=${handleLogout} className="w-full flex items-center gap-3 p-3 text-rose-500 font-bold hover:bg-rose-500/10 rounded-xl transition-all"><i className="fas fa-sign-out-alt"></i> Sair</button>
+                        </div>
+                    </aside>
+
+                    <main className="flex-1 p-4 md:p-10 max-w-7xl mx-auto w-full">
+                        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 animate-in">
+                            <div className="flex items-center gap-4">
+                                <${Avatar} src=${currentActivePhoto} size="lg" />
+                                <div>
+                                    <h1 className="text-xl font-black text-white leading-none">${currentActiveName}</h1>
+                                    <p className="text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-widest">${(activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? 'Conta Secundária' : 'Conta Principal'}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                                <div className="glass p-1.5 rounded-2xl flex items-center gap-1 flex-1 sm:flex-initial">
+                                    <button onClick=${() => changeMonth(-1)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-violet-400 transition-colors"><i className="fas fa-chevron-left text-[10px]"></i></button>
+                                    <div className="flex-1 text-center min-w-[120px]">
+                                        <span className="text-[11px] font-black text-slate-200 capitalize">${new Date(filterMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
+                                    </div>
+                                    <button onClick=${() => changeMonth(1)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-violet-400 transition-colors"><i className="fas fa-chevron-right text-[10px]"></i></button>
+                                </div>
+                                <button onClick=${() => { setShowCustomPeriod(!showCustomPeriod); if(!showCustomPeriod) setBalanceMode('ACCUMULATED'); }} className=${`p-3 glass rounded-2xl transition-all ${showCustomPeriod ? 'text-violet-400 bg-violet-400/10' : 'text-slate-400 hover:text-violet-400'} flex flex-col items-center justify-center`} title="Período Personalizado">
+                                    <i className="fas fa-calendar-alt"></i>
+                                    <span className="text-[7px] font-black uppercase mt-1 leading-none">ESCOLHER PERIODO</span>
+                                </button>
+                                <button onClick=${exportPDF} className="p-3 glass rounded-2xl text-slate-400 hover:text-violet-400 transition-all flex flex-col items-center justify-center" title="Exportar Relatório">
+                                    <i className="fas fa-file-export"></i>
+                                    <span className="text-[7px] font-black uppercase mt-1 leading-none">baixar relatorio</span>
+                                </button>
+                            </div>
+                        </header>
+
+                        ${showCustomPeriod && html`
+                            <div className="mb-6 p-6 glass rounded-3xl animate-in border border-violet-500/20 shadow-xl">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Escolher Período Específico</h3>
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse"></span>
+                                        <span className="text-[10px] font-bold text-violet-400 uppercase">Filtro Ativo</span>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Data Inicial</label>
+                                        <input type="date" className="w-full p-4 bg-slate-800 rounded-xl text-xs border border-slate-700 outline-none focus:border-violet-500 transition-all" value=${accumStart} onInput=${e => { setAccumStart(e.target.value); setBalanceMode('ACCUMULATED'); }} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Data Final</label>
+                                        <input type="date" className="w-full p-4 bg-slate-800 rounded-xl text-xs border border-slate-700 outline-none focus:border-violet-500 transition-all" value=${accumEnd} onInput=${e => { setAccumEnd(e.target.value); setBalanceMode('ACCUMULATED'); }} />
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex gap-4">
+                                    <button onClick=${() => { setAccumStart(''); setAccumEnd(''); setBalanceMode('MONTHLY'); setShowCustomPeriod(false); }} className="text-[10px] font-black text-rose-500 uppercase hover:underline">Limpar e Voltar ao Mensal</button>
+                                </div>
+                            </div>
+                        `}
+
+                        ${(activeTab === 'dashboard' || activeTab === 'secondary') && html`
+                            <div className="space-y-6 animate-in">
+                                <div className="flex justify-end mb-2">
+                                    <div className="inline-flex p-1 bg-slate-900/50 rounded-xl border border-slate-800">
+                                        <button onClick=${() => { setBalanceMode('MONTHLY'); setAccumStart(''); setAccumEnd(''); }} className=${`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${balanceMode === 'MONTHLY' ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' : 'text-slate-500 hover:text-slate-300'}`}>Visão Mensal</button>
+                                        <button onClick=${() => setBalanceMode('ACCUMULATED')} className=${`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${balanceMode === 'ACCUMULATED' ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' : 'text-slate-500 hover:text-slate-300'}`}>Visão Acumulada</button>
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                    <div onClick=${() => navigateToExtrato(activeTab === 'secondary', 'INCOME')} className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 cursor-pointer hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[9px] font-black text-slate-500 group-hover:text-emerald-500 uppercase tracking-widest transition-colors">
+                                                ${(balanceMode === 'ACCUMULATED' && accumStart && accumEnd) ? 'Entradas no Período' : (balanceMode === 'ACCUMULATED' ? 'Entradas Totais' : 'Entradas (Mês)')}
+                                            </p>
+                                            <i className="fas fa-arrow-up text-emerald-500 text-xs"></i>
+                                        </div>
+                                        <p className="text-2xl font-black text-emerald-500">R$ ${totals.inc.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    </div>
+                                    
+                                    <div onClick=${() => navigateToExtrato(activeTab === 'secondary', 'EXPENSE')} className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 cursor-pointer hover:border-rose-500/30 hover:bg-rose-500/5 transition-all group">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[9px] font-black text-slate-500 group-hover:text-rose-500 uppercase tracking-widest transition-colors">
+                                                ${(balanceMode === 'ACCUMULATED' && accumStart && accumEnd) ? 'Saídas no Período' : (balanceMode === 'ACCUMULATED' ? 'Saídas Totais' : 'Saídas (Mês)')}
+                                            </p>
+                                            <i className="fas fa-arrow-down text-rose-500 text-xs"></i>
+                                        </div>
+                                        <p className="text-2xl font-black text-rose-500">R$ ${totals.exp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    </div>
+                                    
+                                    <div className=${`p-6 rounded-[2rem] shadow-xl transition-all ${totals.bal >= 0 ? 'bg-violet-600 shadow-violet-600/20' : 'bg-rose-600 shadow-rose-600/20'}`}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[9px] font-black text-white/60 uppercase tracking-widest">
+                                                ${balanceMode === 'MONTHLY' ? 'Saldo Mensal' : (accumStart && accumEnd ? 'Saldo do Período' : 'Saldo Acumulado')}
+                                            </p>
+                                            <i className="fas fa-wallet text-white/60 text-xs"></i>
+                                        </div>
+                                        <p className="text-2xl font-black text-white">R$ ${totals.bal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-sm">
+                                    <div className="px-8 py-5 border-b border-slate-800/50 flex justify-between items-center">
+                                        <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                                            ${(balanceMode === 'ACCUMULATED' && accumStart && accumEnd) ? 'Transações do Período' : 'Atividades Recentes'}
+                                        </h3>
+                                        <button onClick=${() => navigateToExtrato(activeTab === 'secondary')} className="text-violet-400 text-[10px] font-black uppercase hover:text-violet-300 transition-colors">Extrato Completo <i className="fas fa-external-link-alt ml-1"></i></button>
+                                    </div>
+                                    <div className="divide-y divide-slate-800/40">
+                                        ${currentTransactions.length === 0 ? html`<div className="p-10 text-center text-slate-500 text-xs font-bold uppercase tracking-widest">Nenhuma transação encontrada</div>` : currentTransactions.slice(0, 10).map(t => html`
+                                            <div className="flex items-center justify-between px-8 py-5 hover:bg-slate-800/20 cursor-pointer transition-colors" onClick=${() => openEdit(t)}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className=${`w-10 h-10 rounded-xl flex items-center justify-center text-xs shadow-sm ${t.type === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10' : 'bg-rose-500/10 text-rose-500 border border-rose-500/10'}`}>
+                                                        <i className=${t.type === 'INCOME' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'}></i>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-200">
+                                                            ${t.description} 
+                                                            ${t.totalInstallments ? html`<span className="text-[10px] text-violet-400/80 ml-2 font-medium">(${t.currentInstallment}/${t.totalInstallments} • R$ ${t.totalValue?.toLocaleString('pt-BR', {minimumFractionDigits: 2})})</span>` : ''}
+                                                        </p>
+                                                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">${new Date(t.date).toLocaleDateString('pt-BR')} • ${t.method}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className=${`font-black text-sm ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                        ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                    <span className=${`text-[8px] font-black uppercase ${t.isPaid ? 'text-emerald-500/60' : 'text-slate-500'}`}>${t.isPaid ? 'Efetuado' : 'Pendente'}</span>
+                                                </div>
+                                            </div>
+                                        `)}
+                                    </div>
+                                </div>
+                            </div>
+                        `}
+
+                        ${activeTab === 'transactions' && html`
+                            <div className="space-y-4 animate-in">
+                                <div className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 space-y-5 shadow-sm">
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex p-1 bg-slate-950 rounded-2xl gap-1 w-full no-scrollbar overflow-x-auto border border-slate-800">
+                                            <button onClick=${() => setTypeFilter('ALL')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'ALL' ? 'bg-slate-800 text-violet-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>Tudo</button>
+                                            <button onClick=${() => setTypeFilter('INCOME')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10 shadow-sm' : 'text-slate-500 hover:text-emerald-400'}`}>Entradas</button>
+                                            <button onClick=${() => setTypeFilter('EXPENSE')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'EXPENSE' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/10 shadow-sm' : 'text-slate-500 hover:text-rose-400'}`}>Saídas</button>
+                                        </div>
+                                        
+                                        <div className="flex p-1 bg-slate-950 rounded-2xl gap-1 w-full no-scrollbar overflow-x-auto border border-slate-800">
+                                            ${['ALL', 'PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'].map(m => html`
+                                                <button onClick=${() => setMethodFilter(m)} className=${`flex-none px-5 py-3 rounded-xl text-[8px] font-black uppercase transition-all whitespace-nowrap ${methodFilter === m ? 'bg-slate-800 text-violet-400 border border-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>
+                                                    ${m === 'ALL' ? 'Canais (Todos)' : m}
+                                                </button>
+                                            `)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    ${currentTransactions.length === 0 ? html`<div className="col-span-full py-20 text-center text-slate-500 font-bold uppercase text-xs tracking-[0.2em]">Sem dados para este filtro</div>` : currentTransactions.map(t => html`
+                                        <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 flex items-center justify-between gap-4 hover:border-slate-700 transition-all group" onClick=${() => openEdit(t)}>
+                                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                                                <div className=${`w-12 h-12 rounded-2xl flex items-center justify-center text-sm flex-none shadow-sm ${t.type === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                                    <i className=${t.type === 'INCOME' ? 'fas fa-plus' : 'fas fa-minus'}></i>
+                                                </div>
+                                                <div className="truncate">
+                                                    <p className="text-[12px] font-black text-slate-100 truncate">
+                                                        ${t.description} 
+                                                        ${t.totalInstallments ? html`
+                                                            <span className="text-violet-400/90 ml-1 font-medium">
+                                                                (${t.currentInstallment}/${t.totalInstallments} • R$ ${t.totalValue?.toLocaleString('pt-BR', {minimumFractionDigits: 2})})
+                                                            </span>
+                                                        ` : ''}
+                                                    </p>
+                                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">${new Date(t.date).toLocaleDateString('pt-BR')} • ${t.method}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <p className=${`font-black text-xs whitespace-nowrap ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                         R$ ${t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                    <p className="text-[8px] font-black uppercase text-slate-600">${t.isPaid ? 'Pago' : 'Pendente'}</p>
+                                                </div>
+                                                <button onClick=${(e) => { e.stopPropagation(); if(confirm("Deseja realmente excluir este registro?")) deleteDoc(doc(db, "transactions", t.id))}} className="p-2.5 text-slate-700 hover:text-rose-500 transition-colors bg-slate-800/50 rounded-xl group-hover:bg-rose-500/10"><i className="fas fa-trash-alt text-xs"></i></button>
+                                            </div>
+                                        </div>
+                                    `)}
+                                </div>
+                            </div>
+                        `}
+
+                        ${activeTab === 'settings' && html`
+                            <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10">
+                                <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Meu Perfil e Contas</h3>
+                                
+                                <div className="space-y-6">
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
+                                        <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
+                                            <div className="relative cursor-pointer group" onClick=${() => fileInputPrincipalRef.current.click()}>
+                                                <${Avatar} src=${profilePhoto} size="lg" />
+                                                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs"><i className="fas fa-camera"></i></div>
+                                                <input type="file" ref=${fileInputPrincipalRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'principal')} />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Principal</h4>
+                                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Titular</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
+                                            <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-violet-500 transition-all" value=${profileName} onInput=${e => setProfileName(e.target.value)} />
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
+                                        <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
+                                            <div className="relative cursor-pointer group" onClick=${() => fileInputSecondaryRef.current.click()}>
+                                                <${Avatar} src=${secondaryPhoto} size="lg" />
+                                                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs"><i className="fas fa-camera"></i></div>
+                                                <input type="file" ref=${fileInputSecondaryRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'secondary')} />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Secundária</h4>
+                                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Dependente / Investimentos</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
+                                            <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-emerald-500 transition-all" value=${secondaryName} onInput=${e => setSecondaryName(e.target.value)} />
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 space-y-4">
+                                        <button onClick=${async () => {
+                                            try {
+                                                await updateDoc(doc(db, "users", user.id), { 
+                                                    appName: profileName, 
+                                                    secondaryName: secondaryName, 
+                                                    photoURL: profilePhoto,
+                                                    secondaryPhotoURL: secondaryPhoto
+                                                });
+                                                alert("As configurações foram salvas com sucesso!");
+                                            } catch (err) {
+                                                alert("Erro ao sincronizar dados com o servidor.");
+                                            }
+                                        }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
+
+                                        <button onClick=${handleLogout} className="md:hidden w-full py-4 bg-slate-800/30 text-rose-500 font-black rounded-2xl text-[9px] uppercase tracking-widest border border-rose-500/20 active:bg-rose-500/10">
+                                            <i className="fas fa-sign-out-alt mr-2"></i> Encerrar Sessão
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `}
+                    </main>
+
+                    <button onClick=${() => openAddTransaction(activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions))} className="fixed bottom-24 right-6 md:bottom-10 md:right-10 bg-violet-600 text-white w-16 h-16 rounded-[1.8rem] shadow-2xl flex items-center justify-center z-50 border-4 border-slate-950 active:scale-90 hover:bg-violet-500 transition-all group">
+                        <i className="fas fa-plus text-xl group-hover:rotate-90 transition-transform"></i>
+                    </button>
+
+                    <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 flex justify-around p-4 z-[80] shadow-2xl">
+                        <button onClick=${() => setActiveTab('dashboard')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'dashboard' ? 'text-violet-400 scale-110' : 'text-slate-500 opacity-60'}`}>
+                            <i className="fas fa-home text-sm"></i>
+                            <span className="text-[7px] font-black uppercase tracking-widest">Início</span>
+                        </button>
+                        <button onClick=${() => setActiveTab('secondary')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'secondary' ? 'text-emerald-400 scale-110' : 'text-slate-500 opacity-60'}`}>
+                            <i className="fas fa-wallet text-sm"></i>
+                            <span className="text-[7px] font-black uppercase tracking-widest">Conta 2</span>
+                        </button>
+                        <button onClick=${() => navigateToExtrato(false)} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'transactions' && !viewSecondaryTransactions ? 'text-violet-400 scale-110' : 'text-slate-500 opacity-60'}`}>
+                            <i className="fas fa-list text-sm"></i>
+                            <span className="text-[7px] font-black uppercase tracking-widest">Extrato</span>
+                        </button>
+                        <button onClick=${() => setActiveTab('settings')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'settings' ? 'text-violet-400 scale-110' : 'text-slate-500 opacity-60'}`}>
+                            <i className="fas fa-user-cog text-sm"></i>
+                            <span className="text-[7px] font-black uppercase tracking-widest">Perfil</span>
+                        </button>
+                    </nav>
+                </div>`;
+        };
+
+        ReactDOM.render(html`<${App} />`, document.getElementById('root'));
+    </script>
+</body>
+</html>
+
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

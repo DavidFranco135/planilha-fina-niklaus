@@ -222,7 +222,7 @@
                                 const storage = keepConnected ? localStorage : sessionStorage;
                                 storage.setItem('belaju_sid', safeId);
                                 startDataSync(safeId);
-                            } else alert("Acesso restrito.");
+                            } else alert("Acesso restrito, efetue o pagamento para liberar o acesso.");
                         } else alert("Dados inválidos");
                     }
                 } catch (err) { alert("Erro de conexão"); }

@@ -8,8 +8,9 @@
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/552/552817.png">
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/552/552817.png">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -487,7 +488,7 @@
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Tipo</label>
-                                            <select className="w-full p-3 bg-slate-800 border-0 rounded-xl ring-1 ring-slate-700" value=${newTx.type} onChange=${e => setNewTx({...newTx, type: e.target.value})}>
+                                            <select className="w-full p-3 bg-slate-800 border-0 rounded-xl ring-1 ring-slate-700\" value=${newTx.type} onChange=${e => setNewTx({...newTx, type: e.target.value})}>
                                                 <option value="INCOME">Entrada (+)</option>
                                                 <option value="EXPENSE">Saída (-)</option>
                                             </select>
@@ -584,7 +585,7 @@
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[8px] font-bold text-slate-500 uppercase ml-1">Data Final</label>
-                                        <input type="date" className="w-full p-4 bg-slate-800 rounded-xl text-xs border border-slate-700 outline-none focus:border-violet-500 transition-all" value=${accumEnd} onInput=${e => { setAccumEnd(e.target.value); setBalanceMode('ACCUMULATED'); }} />
+                                        <input type="date" className="w-full p-4 bg-slate-800 rounded-xl text-xs border border-slate-700 outline-none focus:border-violet-500 transition-all\" value=${accumEnd} onInput=${e => { setAccumEnd(e.target.value); setBalanceMode('ACCUMULATED'); }} />
                                     </div>
                                 </div>
                                 <div className="mt-4 flex gap-4">
@@ -639,7 +640,7 @@
                                         <h3 className="text-xs font-black text-white uppercase tracking-wider">
                                             ${(balanceMode === 'ACCUMULATED' && accumStart && accumEnd) ? 'Transações do Período' : 'Atividades Recentes'}
                                         </h3>
-                                        <button onClick=${() => navigateToExtrato(activeTab === 'secondary')} className="text-violet-400 text-[10px] font-black uppercase hover:text-violet-300 transition-colors">Extrato Completo <i className="fas fa-external-link-alt ml-1"></i></button>
+                                        <button onClick=${() => navigateToExtrato(activeTab === 'secondary')} className=\"text-violet-400 text-[10px] font-black uppercase hover:text-violet-300 transition-colors\">Extrato Completo <i className=\"fas fa-external-link-alt ml-1\"></i></button>
                                     </div>
                                     <div className="divide-y divide-slate-800/40">
                                         ${currentTransactions.length === 0 ? html`<div className="p-10 text-center text-slate-500 text-xs font-bold uppercase tracking-widest">Nenhuma transação encontrada</div>` : currentTransactions.slice(0, 10).map(t => html`

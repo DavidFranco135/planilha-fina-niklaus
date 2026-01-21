@@ -181,8 +181,8 @@
         // Preload sounds
         const bellSound = new Audio('https://assets.mixkit.co/active_storage/sfx/3005/3005-preview.mp3');
         const trashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1474/1474-preview.mp3');
-        // Reduzir volume em 60% (volume 1.0 -> 0.4)
-        trashSound.volume = 0.4;
+        // Reduzir volume em 70% (volume 1.0 -> 0.3)
+        trashSound.volume = 0.3;
 
         const Avatar = ({ src, size = 'md' }) => {
             const classes = { sm: 'w-8 h-8 rounded-lg', md: 'w-10 h-10 rounded-xl', lg: 'w-16 h-16 rounded-2xl' };
@@ -226,6 +226,7 @@
             const [pass, setPass] = useState('');
             const [showPass, setShowPass] = useState(false);
             const [isRegistering, setIsRegistering] = useState(false);
+            const [isRecovering, setIsRecovering] = useState(false);
             const [authLoading, setAuthLoading] = useState(false);
 
             const [profileName, setProfileName] = useState('');
@@ -337,6 +338,27 @@
                 try {
                     const ref = doc(db, "users", safeId);
                     const s = await getDoc(ref);
+                    
+                    if (isRecovering) {
+                        if (s.exists()) {
+                            await addDoc(collection(db, "suggestions"), {
+                                userId: 'system',
+                                userEmail: email,
+                                message: `SOLICITAÇÃO DE RECUPERAÇÃO DE SENHA PARA O USUÁRIO: ${email}`,
+                                createdAt: serverTimestamp(),
+                                reply: null,
+                                repliedAt: null,
+                                replyViewed: false
+                            });
+                            alert("Solicitação enviada! Verifique sua caixa de entrada em breve ou contate o administrador.");
+                            setIsRecovering(false);
+                        } else {
+                            alert("Usuário não encontrado.");
+                        }
+                        setAuthLoading(false);
+                        return;
+                    }
+
                     if (isRegistering) {
                         if (s.exists()) alert("E-mail já cadastrado");
                         else {
@@ -527,8 +549,8 @@
 
             const handleAppShare = async () => {
                 const shareData = {
-                    title: 'FinanFlow',
-                    text: 'Dê uma olhada neste app incrível para controle financeiro!',
+                    title: 'FinanFlow - Controle Financeiro Premium',
+                    text: 'Domine suas finanças com o FinanFlow! Acesse agora pelo link e garanta sua versão Premium com todas as funcionalidades liberadas:',
                     url: window.location.href
                 };
 
@@ -536,8 +558,8 @@
                     if (navigator.share) {
                         await navigator.share(shareData);
                     } else {
-                        await navigator.clipboard.writeText(window.location.href);
-                        alert("Link copiado para a área de transferência!");
+                        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+                        alert("Link de convite e informações de acesso copiados para a área de transferência!");
                     }
                 } catch (err) {
                     console.log('Error sharing:', err);
@@ -650,26 +672,48 @@
                             <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-xl rotate-3">
                                 <i className="fas fa-dollar-sign text-2xl"></i>
                             </div>
-                            <h1 className="text-2xl font-black text-white">${isRegistering ? 'Criar Conta' : 'Acessar'}</h1>
+                            <h1 className="text-2xl font-black text-white">${isRecovering ? 'Recuperar Acesso' : isRegistering ? 'Criar Conta' : 'Acessar'}</h1>
                         </div>
                         <form onSubmit=${handleAuth} className="space-y-4">
-                            <input type="text" required placeholder="Usuário" className="w-full p-4 bg-slate-800 border-0 rounded-xl outline-none ring-1 ring-slate-700 text-white" value=${email} onInput=${e => setEmail(e.target.value)} />
-                            <div className="relative">
-                                <input type=${showPass ? "text" : "password"} required placeholder="Senha" className="w-full p-4 bg-slate-800 border-0 rounded-xl outline-none ring-1 ring-slate-700 text-white" value=${pass} onInput=${e => setPass(e.target.value)} />
-                                <button type="button" onClick=${() => setShowPass(!showPass)} className="absolute right-4 top-4 text-slate-500"><i className=${showPass ? "fas fa-eye-slash" : "fas fa-eye"}></i></button>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 tracking-widest">E-mail ou Usuário</label>
+                                <input type="text" required placeholder="Digite aqui..." className="w-full p-4 bg-slate-800 border-0 rounded-xl outline-none ring-1 ring-slate-700 text-white focus:ring-violet-500 transition-all" value=${email} onInput=${e => setEmail(e.target.value)} />
                             </div>
                             
-                            <div className="flex items-center gap-2 px-1 py-1">
-                                <input type="checkbox" id="keep" checked=${keepConnected} onChange=${e => setKeepConnected(e.target.checked)} className="w-4 h-4 accent-violet-600 cursor-pointer" />
-                                <label htmlFor="keep" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none">Manter conectado</label>
-                            </div>
+                            ${!isRecovering && html`
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 tracking-widest">Sua Senha</label>
+                                    <div className="relative">
+                                        <input type=${showPass ? "text" : "password"} required placeholder="••••••••" className="w-full p-4 bg-slate-800 border-0 rounded-xl outline-none ring-1 ring-slate-700 text-white focus:ring-violet-500 transition-all" value=${pass} onInput=${e => setPass(e.target.value)} />
+                                        <button type="button" onClick=${() => setShowPass(!showPass)} className="absolute right-4 top-4 text-slate-500 hover:text-slate-300 transition-colors"><i className=${showPass ? "fas fa-eye-slash" : "fas fa-eye"}></i></button>
+                                    </div>
+                                </div>
+                            `}
 
-                            <button className="w-full py-4 bg-violet-600 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all mt-2">
-                                ${authLoading ? '...' : isRegistering ? 'Cadastrar' : 'Entrar'}
+                            ${!isRecovering && !isRegistering && html`
+                                <button type="button" onClick=${() => { setIsRecovering(true); setIsRegistering(false); }} className="text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-violet-400 transition-colors w-full text-right mt-1">Esqueceu sua senha?</button>
+                            `}
+                            
+                            ${!isRecovering && html`
+                                <div className="flex items-center gap-2 px-1 py-1">
+                                    <input type="checkbox" id="keep" checked=${keepConnected} onChange=${e => setKeepConnected(e.target.checked)} className="w-4 h-4 accent-violet-600 cursor-pointer" />
+                                    <label htmlFor="keep" className="text-[10px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none">Manter conectado</label>
+                                </div>
+                            `}
+
+                            <button disabled=${authLoading} className="w-full py-4 bg-violet-600 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all mt-2 disabled:opacity-50">
+                                ${authLoading ? 'Processando...' : isRecovering ? 'Enviar Solicitação' : isRegistering ? 'Finalizar Cadastro' : 'Acessar Conta'}
                             </button>
-                            <button type="button" onClick=${() => setIsRegistering(!isRegistering)} className="w-full text-violet-400 font-bold text-xs">
-                                ${isRegistering ? 'Já tenho conta' : 'Criar nova conta'}
-                            </button>
+
+                            <div className="flex flex-col gap-2 mt-2">
+                                ${isRecovering ? html`
+                                    <button type="button" onClick=${() => setIsRecovering(false)} className="w-full text-violet-400 font-bold text-xs uppercase tracking-widest">Voltar para o Login</button>
+                                ` : html`
+                                    <button type="button" onClick=${() => { setIsRegistering(!isRegistering); setIsRecovering(false); }} className="w-full text-violet-400 font-bold text-xs uppercase tracking-widest">
+                                        ${isRegistering ? 'Já tenho conta' : 'Criar nova conta'}
+                                    </button>
+                                `}
+                            </div>
                         </form>
                     </div>
                     <div className="mt-8 text-center text-[8px] font-black text-slate-800 uppercase tracking-[0.4em] opacity-40 animate-in">Produzido por NIKLAUS</div>

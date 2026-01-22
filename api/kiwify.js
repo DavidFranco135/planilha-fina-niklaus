@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 
-// ✅ evita inicializar 2x
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -18,7 +17,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    // ✅ validar token
+    // ✅ validar token da Kiwify
     const token = process.env.KIWIFY_TOKEN;
     const receivedToken = request.headers.get("x-kiwify-token");
 
@@ -30,40 +29,21 @@ export async function POST(request) {
       return NextResponse.json({ error: "Token inválido" }, { status: 401 });
     }
 
-    // ✅ ler payload
     const data = await request.json();
 
     const event = data?.order?.webhook_event_type;
     const status = data?.order?.order_status;
-    const email = data?.order?.Customer?.email;
+    const email = data?.order?.Customer?.email?.toLowerCase();
 
     if (!email) {
-      return NextResponse.json({ error: "Email não veio no webhook" }, { status: 400 });
+      return NextResponse.json({ error: "Email não encontrado no webhook" }, { status: 400 });
     }
 
-    // ✅ liberar acesso quando aprovado
-    if (event === "order_approved" && status === "paid") {
-      const db = admin.firestore();
-
-      await db.collection("usersByEmail").doc(email).set(
-        {
-          paid: true,
-          plan: "premium",
-          orderId: data?.order?.order_id,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      return NextResponse.json({ ok: true, released: true }, { status: 200 });
+    // ✅ só libera se realmente aprovado
+    if (event !== "order_approved" || status !== "paid") {
+      return NextResponse.json({ ok: true, released: false }, { status: 200 });
     }
 
-    return NextResponse.json({ ok: true, released: false }, { status: 200 });
-  } catch (err) {
-    console.error("Webhook error:", err);
-    return NextResponse.json(
-      { ok: false, error: "Erro interno no webhook" },
-      { status: 500 }
-    );
-  }
-}
+    const db = admin.firestore();
+
+    // ✅ acha o usuário

@@ -2,12 +2,12 @@ import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_DOMINIO",
-  projectId: "SEU_PROJECT_ID",
-  storageBucket: "SEU_BUCKET",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
+  authDomain: "planilha-fina.firebaseapp.com",
+  projectId: "planilha-fina",
+  storageBucket: "planilha-fina.firebasestorage.app",
+  messagingSenderId: "288466007894",
+  appId: "1:288466007894:web:e917cc6eeac421671188f7"
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -28,12 +28,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Payload inválido" });
     }
 
+    // ATIVAÇÃO AUTOMÁTICA
     if (status === "paid") {
       await setDoc(doc(db, "usuarios", email), {
         email,
         status: "paid",
         origem: "kiwify",
+        produto: data.order.Product.product_name,
+        order_id: data.order.order_id,
         data_pagamento: new Date().toISOString()
+      }, { merge: true });
+    }
+
+    // BLOQUEIO AUTOMÁTICO (reembolso)
+    if (status === "refunded") {
+      await setDoc(doc(db, "usuarios", email), {
+        status: "refunded"
       }, { merge: true });
     }
 

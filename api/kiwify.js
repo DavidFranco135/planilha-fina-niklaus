@@ -1,11 +1,24 @@
-This Serverless Function has crashed.
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 
-Your connection is working correctly.
+export default async function handler(req, res) {
+  if(req.method !== "POST"){
+    return res.status(405).json({ error: "Método não permitido" });
+  }
 
-Vercel is working correctly.
+  const data = req.body;
 
-500: INTERNAL_SERVER_ERROR
-Code: FUNCTION_INVOCATION_FAILED
-ID: gru1::pcwch-1769095688171-05c994b7c4d3
+  if(data.order_status === "paid"){
+    const email = data.customer.email;
 
-If you are a visitor, contact the website owner or try again later.
+    await setDoc(doc(db, "usuarios", email), {
+      email: email,
+      status: "paid",
+      plano: "premium",
+      origem: "kiwify",
+      data_pagamento: new Date().toISOString()
+    }, { merge: true });
+  }
+
+  res.status(200).json({ ok: true });
+}

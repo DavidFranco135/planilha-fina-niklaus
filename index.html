@@ -301,30 +301,40 @@
             /**
              * Inicia a sincronização de dados em tempo real com o Firestore
              */
-            const startDataSync = (sid) => {
-                setLoading(true);
-                
-                // Monitoramento de dados do usuário
-                const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-                    if (s.exists()) {
-                        const userData = { id: s.id, ...s.data() };
-                        // Bloqueio de segurança para usuários não pagos (exceto adm)
-                        const status = (userData.status || "").toLowerCase().trim();
-                        if (userData.email.toLowerCase() !== 'niklaus' && status !== 'paid') {
-                            alert("Acesso Bloqueado.");
-                            handleLogout();
-                            return
-                        }
+           const startDataSync = (sid) => {
+  setLoading(true);
 
-                        }
-                        setUser(userData);
-                        setProfileName(userData.appName || 'Meu Perfil');
-                        setSecondaryName(userData.secondaryName || 'Conta 2');
-                        setProfilePhoto(userData.photoURL || '');
-                        setSecondaryPhoto(userData.secondaryPhotoURL || '');
-                        setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
-                    } else handleLogout();
-                });
+  const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+    if (s.exists()) {
+      const userData = { id: s.id, ...s.data() };
+
+      const status = (userData.status || "").toLowerCase().trim();
+
+      // Bloqueio de segurança para usuários não pagos (exceto adm)
+      if (userData.email.toLowerCase() !== "niklaus" && status !== "paid") {
+        alert("Acesso Bloqueado.");
+        handleLogout();
+        return;
+      }
+
+      setUser(userData);
+      setProfileName(userData.appName || "Meu Perfil");
+      setSecondaryName(userData.secondaryName || "Conta 2");
+      setProfilePhoto(userData.photoURL || "");
+      setSecondaryPhoto(userData.secondaryPhotoURL || "");
+      setSoundEnabled(
+        userData.soundEnabled !== undefined ? userData.soundEnabled : true
+      );
+    } else {
+      handleLogout();
+    }
+  });
+
+  return () => {
+    unsubUser();
+  };
+};
+
 
                 // Monitoramento das transações do usuário
                 const q = query(collection(db, "transactions"), where("userId", "==", sid));

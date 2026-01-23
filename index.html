@@ -302,7 +302,8 @@
                     if (s.exists()) {
                         const userData = { id: s.id, ...s.data() };
                         // Bloqueio de segurança para usuários não pagos (exceto adm)
-                        if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
+                        if (userData.email.toLowerCase() !== 'niklaus' && !(userData.paid === true && userData.pending === false)) {
+
                              alert("Acesso Bloqueado.");
                              handleLogout();
                              return;

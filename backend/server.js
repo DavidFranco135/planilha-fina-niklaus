@@ -11,7 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Firebase Admin
+// ================= FIREBASE ADMIN =================
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(
@@ -20,44 +20,53 @@ if (!admin.apps.length) {
   });
 }
 
-// Gemini
+// ================= GEMINI =================
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Webhook Kiwify
+// ================= WEBHOOK KIWIFY =================
 app.post("/kiwify-webhook", kiwifyHandler);
 
-// IA
+// ================= IA =================
 app.post("/ai", async (req, res) => {
   try {
     const { totals, currentTransactions, userQuestion } = req.body;
 
-    if (!userQuestion) {
-      return res.json({ reply: "Faça uma pergunta ao Mentor IA." });
+    if (!userQuestion || !userQuestion.trim()) {
+      return res.json({ reply: "Digite uma pergunta para o Mentor IA." });
     }
 
     const prompt = `
 Você é um mentor financeiro chamado Niklaus.
-Pergunta do usuário: ${userQuestion}
+Você fala português brasileiro.
+Você é direto, claro, prático e estratégico.
 
+Pergunta do usuário:
+"${userQuestion}"
+
+Dados financeiros:
 Totais: ${JSON.stringify(totals)}
 Transações: ${JSON.stringify(currentTransactions)}
 
-Responda de forma clara, prática e objetiva.
+Responda de forma clara, prática e objetiva, com dicas reais e aplicáveis.
 `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // MODELO CORRETO
+    const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
+
     const result = await model.generateContent(prompt);
     const reply = result.response.text();
 
-    res.json({ reply });
+    return res.json({ reply });
 
   } catch (err) {
     console.error("Erro IA:", err);
-    res.status(500).json({ error: "Erro ao consultar IA" });
+    return res.status(500).json({
+      reply: "Erro ao consultar a IA. Tente novamente em instantes."
+    });
   }
 });
 
-// 🔥 ESSA LINHA É O QUE IMPEDE "Application exited early"
+// ================= SERVER =================
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Backend rodando na porta ${PORT}`);

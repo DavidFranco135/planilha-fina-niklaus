@@ -629,10 +629,10 @@ const generateAIAdvice = async () => {
     const res = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         userQuestion: "Como posso melhorar minhas finanças?", // ou pegar de input do usuário
-        totals,               // seu objeto totals já existente
-        currentTransactions   // seu array currentTransactions já existente
+        totals,
+        currentTransactions
       })
     });
 
@@ -650,6 +650,7 @@ const generateAIAdvice = async () => {
     setAiLoading(false);
   }
 };
+
 
 
 

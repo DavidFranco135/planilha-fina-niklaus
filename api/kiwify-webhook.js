@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     console.log("Webhook recebido:", JSON.stringify(data, null, 2));
 
     const email =
-      data?.Customer?.email ||
       data?.customer?.email ||
+      data?.Customer?.email ||
       data?.buyer?.email ||
       data?.order?.customer?.email ||
       data?.order?.email ||
@@ -33,24 +33,23 @@ export default async function handler(req, res) {
 
     const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
 
-    const db = admin.firestore();
-
-    // 🔁 STATUS DINÂMICO (paid / refunded / pending)
-    let status = "pending";
-
-    const orderStatus =
-      data?.order_status ||
+    // 👉 STATUS REAL DA KIWIFY
+    const kiwifyStatus =
       data?.order?.status ||
-      data?.order?.order_status ||
+      data?.order_status ||
       "";
 
-    if (orderStatus === "paid" || orderStatus === "approved") {
+    let status = "pending";
+
+    if (kiwifyStatus === "paid" || kiwifyStatus === "approved") {
       status = "paid";
     }
 
-    if (orderStatus === "refunded" || orderStatus === "chargeback") {
+    if (kiwifyStatus === "refunded" || kiwifyStatus === "chargeback") {
       status = "pending";
     }
+
+    const db = admin.firestore();
 
     await db.collection("users").doc(safeId).set(
       {
@@ -63,7 +62,7 @@ export default async function handler(req, res) {
       { merge: true }
     );
 
-    console.log("Status atualizado:", email, "=>", status);
+    console.log("Status atualizado:", email, "=>", kiwifyStatus, "=>", status);
 
     return res.status(200).json({ ok: true });
   } catch (err) {

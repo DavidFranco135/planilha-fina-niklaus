@@ -615,48 +615,57 @@
             /**
              * Lógica de consulta à IA (Gemini)
              */
-   /**
- * Lógica de consulta à IA (Niklaus)
- */
-const generateAIAdvice = async () => {
-    if (aiLoading) return;
+            const generateAIAdvice = async () => {
+                if (aiLoading) return;
+                setAiLoading(true);
+                setShowAiModal(true);
+                setAiAdvice('');
 
-    if (!userAiQuestion.trim()) {
-        setAiAdvice("Digite uma pergunta para o Mentor IA.");
-        return;
-    }
+                try {
+                    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+                    
+                    const summary = `
+                        Resumo Financeiro do Usuário:
+                        Total de Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
+                        Total de Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
+                        Saldo Atual: R$ ${totals.bal.toLocaleString('pt-BR')}
+                        Principais transações recentes: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
+                    `;
 
-    setAiLoading(true);
-    setAiAdvice("");
+                    const response = await ai.models.generateContent({
+                        model: "gemini-3-flash-preview",
+                        contents: `Com base nesses dados financeiros, dê 3 dicas estratégicas do Niklaus para melhorar meu saldo e organização: ${summary}`,
+                        config: {
+                            systemInstruction: "Você é Niklaus, um mentor financeiro pessoal brasileiro extremamente experiente, pragmático e direto ao ponto. Suas dicas são famosas por serem eficazes e focadas em prosperidade real. Use um tom encorajador, profissional e use emojis.",
+                        }
+                    });
 
-    try {
-        const res = await fetch("https://controlefinanceiro-naip.onrender.com/ai", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                totals,
-                currentTransactions,
-                userQuestion: userAiQuestion
-            })
-        });
+                    if (response && response.text) {
+                        setAiAdvice(response.text);
+                    } else {
+                        throw new Error("Resposta vazia da IA");
+                    }
+                } catch (err) {
+                    console.error("Erro na IA:", err);
+                    setAiAdvice("Dicas do Niklaus para o seu momento:\n\n1. 💸 Estanque os pequenos vazamentos: revise assinaturas e gastos de 'cafezinho' que somados pesam no fim do mês.\n2. 📈 Pague-se primeiro: assim que receber, separe uma quantia para sua reserva, antes de qualquer outro gasto.\n3. 🚀 O segredo não é o quanto você ganha, mas o quanto você mantém e multiplica.");
+                } finally {
+                    setAiLoading(false);
+                }
+            };
 
-        const data = await res.json();
-
-        if (data.reply) {
-            setAiAdvice(data.reply);
-        } else {
-            setAiAdvice("Resposta vazia da IA.");
-        }
-
-    } catch (err) {
-        console.error("Erro na IA:", err);
-        setAiAdvice("Erro ao consultar a IA. Tente novamente.");
-    } finally {
-        setAiLoading(false);
-    }
-};
-
-
+            /**
+             * Upload de foto de perfil (conversão para base64)
+             */
+            const handlePhotoUpload = (e, target) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (target === 'principal') setProfilePhoto(reader.result);
+                    else setSecondaryPhoto(reader.result);
+                };
+                reader.readAsDataURL(file);
+            };
 
             /**
              * Envio de feedback/sugestão
@@ -1519,102 +1528,5 @@ const generateAIAdvice = async () => {
         // Renderização Final no DOM
         ReactDOM.render(html`<${App} />`, document.getElementById('root'));
     </script>
-    <!-- BOTÃO IA -->
-<!-- BOTÃO IA -->
-<button id="aiBtn" style="padding:10px 15px;border-radius:8px;border:none;background:#4CAF50;color:white;cursor:pointer;">
-  Mentor IA
-</button>
-
-<!-- MODAL IA -->
-<div id="aiModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:#fff;padding:20px;border-radius:10px;width:90%;max-width:420px;font-family:Arial, sans-serif;">
-    
-    <h2 style="margin-top:0;">Mentor IA</h2>
-    <p style="margin-bottom:10px;">Faça sua pergunta financeira</p>
-
-    <input 
-      id="aiQuestion" 
-      type="text" 
-      placeholder="Ex: Como sair das dívidas ganhando pouco?"
-      style="width:100%;padding:10px;margin-bottom:10px;border-radius:6px;border:1px solid #ccc;"
-    />
-
-    <button id="askAiBtn" style="padding:10px 15px;border-radius:8px;border:none;background:#2196F3;color:white;cursor:pointer;width:100%;">
-      Perguntar
-    </button>
-
-    <div id="aiResponse" style="margin-top:15px;white-space:pre-wrap;font-size:14px;color:#333;"></div>
-
-    <button id="closeAiBtn" style="margin-top:15px;padding:8px 12px;border:none;background:#ccc;border-radius:6px;width:100%;">
-      Fechar
-    </button>
-
-  </div>
-</div>
-
-<script>
-  const aiBtn = document.getElementById("aiBtn");
-  const aiModal = document.getElementById("aiModal");
-  const closeAiBtn = document.getElementById("closeAiBtn");
-  const askAiBtn = document.getElementById("askAiBtn");
-  const aiQuestion = document.getElementById("aiQuestion");
-  const aiResponse = document.getElementById("aiResponse");
-
-  aiBtn.addEventListener("click", () => {
-    aiModal.style.display = "flex";
-    aiResponse.innerText = "";
-    aiQuestion.value = "";
-  });
-
-  closeAiBtn.addEventListener("click", () => {
-    aiModal.style.display = "none";
-  });
-
-  askAiBtn.addEventListener("click", async () => {
-    const question = aiQuestion.value.trim();
-
-    if (!question) {
-      aiResponse.innerText = "Digite uma pergunta para o Mentor IA.";
-      return;
-    }
-
-    aiResponse.innerText = "Pensando... 🤖";
-
-    try {
-      const res = await fetch("https://controlefinanceiro-naip.onrender.com/ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          totals: {},
-          currentTransactions: [],
-          userQuestion: question
-        })
-      });
-
-      if (!res.ok) {
-        const txt = await res.text();
-        console.error("Resposta backend:", txt);
-        aiResponse.innerText = "Erro no servidor da IA.";
-        return;
-      }
-
-      const data = await res.json();
-
-      if (data.reply) {
-        aiResponse.innerText = data.reply;
-      } else {
-        aiResponse.innerText = "IA não retornou resposta.";
-      }
-
-    } catch (err) {
-      console.error("Erro IA:", err);
-      aiResponse.innerText = "Erro ao conectar com a IA.";
-    }
-  });
-</script>
-
-
 </body>
 </html>

@@ -401,8 +401,9 @@ const startDataSync = (sid) => {
                                 photoURL: '', 
                                 secondaryPhotoURL: '',
                                 soundEnabled: true,
-                                paid: false,
-                                pending: true
+                                status: 'pending'   // 👈 começa bloqueado
+                                });
+
 
                             });
                             alert("Conta criada!");
@@ -410,7 +411,8 @@ const startDataSync = (sid) => {
                     } else {
                         // Caso: Login convencional
                         if (s.exists() && s.data().password === pass) {
-                            if ((s.data().paid === true && s.data().pending === false) || email.toLowerCase() === 'niklaus') {
+                            if (email.toLowerCase() === 'niklaus' || s.data().status === 'paid'
+                               ) {
                                 const storage = keepConnected ? localStorage : sessionStorage;
                                 storage.setItem('belaju_sid', safeId);
                                 startDataSync(safeId);

@@ -13,23 +13,27 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 app.post("/ai", async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { totals, currentTransactions, userQuestion } = req.body;
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash"
-    });
+    const prompt = `
+Você é um mentor financeiro chamado Niklaus.
+Usuário perguntou: "${userQuestion}"
 
+Dados financeiros:
+Totais: ${JSON.stringify(totals)}
+Transações: ${JSON.stringify(currentTransactions)}
+
+Responda de forma clara, prática e objetiva.
+    `;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    const reply = result.response.text();
 
-    res.json({ reply: response });
+    res.json({ reply });
 
   } catch (err) {
     console.error("Erro Gemini:", err);
     res.status(500).json({ error: "Erro ao consultar IA" });
   }
-});
-
-app.listen(10000, () => {
-  console.log("Backend rodando na porta 10000");
 });

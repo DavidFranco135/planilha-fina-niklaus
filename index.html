@@ -294,97 +294,79 @@
             /**
              * Inicia a sincronização de dados em tempo real com o Firestore
              */
-            const startDataSync = (sid) => {
-                setLoading(true);
-                
-                // Monitoramento de dados do usuário
-                const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-                    if (s.exists()) {
-                        const userData = { id: s.id, ...s.data() };
-                        // Bloqueio de segurança para usuários não pagos (exceto adm)
-                        if (sid !== 'niklaus' && !(userData.paid === true && userData.pending === false)) {
-                            alert("Acesso Bloqueado.");
-                            handleLogout();
-                            return;
-                        }
+            /**
+ * Inicia a sincronização de dados em tempo real com o Firestore
+ */
+const startDataSync = (sid) => {
+  setLoading(true);
 
-                        }
-                        setUser(userData);
-                        setProfileName(userData.appName || 'Meu Perfil');
-                        setSecondaryName(userData.secondaryName || 'Conta 2');
-                        setProfilePhoto(userData.photoURL || '');
-                        setSecondaryPhoto(userData.secondaryPhotoURL || '');
-                        setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
-                    } else handleLogout();
-                });
+  // Monitoramento de dados do usuário
+  const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+    if (s.exists()) {
+      const userData = { id: s.id, ...s.data() };
 
-                // Monitoramento das transações do usuário
-                const q = query(collection(db, "transactions"), where("userId", "==", sid));
-                const unsubTx = onSnapshot(q, (s) => {
-                    const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
-                    setTransactions(docs.sort((a, b) => {
-                        const dateA = a.createdAt?.seconds || 0;
-                        const dateB = b.createdAt?.seconds || 0;
-                        return dateB - dateA;
-                    }));
-                    setLoading(false);
-                });
+      const hasAccess =
+        userData.email?.toLowerCase() === 'niklaus' ||
+        userData.status === 'paid';
 
-                // Monitoramento de sugestões (feedback do admin)
-                let unsubSugg = () => {};
-                if (sid === 'niklaus') {
-                    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-                    unsubSugg = onSnapshot(qs, (s) => {
-                        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
-                    });
-                } else {
-                    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-                    unsubSugg = onSnapshot(qsUser, (s) => {
-                        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                        setUserSuggestions(suggestions);
-                        const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
-                        setUnreadCount(unread);
-                    });
-                }
+      if (!hasAccess) {
+        alert("Acesso Bloqueado.");
+        handleLogout();
+        return;
+      }
 
-                return () => { unsubUser(); unsubTx(); unsubSugg(); };
-            };
+      setUser(userData);
+      setProfileName(userData.appName || 'Meu Perfil');
+      setSecondaryName(userData.secondaryName || 'Conta 2');
+      setProfilePhoto(userData.photoURL || '');
+      setSecondaryPhoto(userData.secondaryPhotoURL || '');
+      setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
+    } else {
+      handleLogout();
+    }
+  });
+
+  // Monitoramento das transações do usuário
+  const q = query(collection(db, "transactions"), where("userId", "==", sid));
+  const unsubTx = onSnapshot(q, (s) => {
+    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    setTransactions(docs.sort((a, b) => {
+      const dateA = a.createdAt?.seconds || 0;
+      const dateB = b.createdAt?.seconds || 0;
+      return dateB - dateA;
+    }));
+    setLoading(false);
+  });
+
+  // Monitoramento de sugestões (feedback do admin)
+  let unsubSugg = () => {};
+  if (sid === 'niklaus') {
+    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+    unsubSugg = onSnapshot(qs, (s) => {
+      setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  } else {
+    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+    unsubSugg = onSnapshot(qsUser, (s) => {
+      const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      setUserSuggestions(suggestions);
+      const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
+      setUnreadCount(unread);
+    });
+  }
+
+  return () => {
+    unsubUser();
+    unsubTx();
+    unsubSugg();
+  };
+};
+
 
             // Efeito para checar persistência de login ao carregar
             useEffect(() => {
                 const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
-                if (sid) return startDataSync(sid);
-                setLoading(false);
-            }, []);
-
-            // Efeito para fechar dropdown de notificações ao clicar fora
-            useEffect(() => {
-                const handleClickOutside = (event) => {
-                    if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
-                        setShowNotificationList(false);
-                    }
-                };
-                document.addEventListener('mousedown', handleClickOutside);
-                return () => document.removeEventListener('mousedown', handleClickOutside);
-            }, []);
-
-            // Notificações formatadas (respostas do admin)
-            const notifications = useMemo(() => {
-                return [...userSuggestions]
-                    .filter(sug => sug.reply)
-                    .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
-            }, [userSuggestions]);
-
-            /**
-             * Lógica de Autenticação (Login, Cadastro, Recuperação)
-             */
-            const handleAuth = async (e) => {
-                e.preventDefault();
-                setAuthLoading(true);
-                const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-                try {
-                    const ref = doc(db, "users", safeId);
-                    const s = await getDoc(ref);
+                i
                     
                     // Caso: Recuperação de Senha (envia sugestão ao sistema)
                     if (isRecovering) {

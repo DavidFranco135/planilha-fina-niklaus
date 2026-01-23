@@ -12,15 +12,16 @@ app.post("/gemini", async (req, res) => {
   try {
     const { mensagem } = req.body;
 
+    // Prompt Niklaus em português com emojis
     const promptText = `
 Você é Niklaus, mentor financeiro brasileiro, direto, pragmático e experiente.
 Gere 3 dicas financeiras estratégicas, objetivas e aplicáveis.
 Use linguagem simples, tom encorajador e emojis moderados.
-Responda **somente em português**.
+Responda somente em português.
 
 Dados do usuário:
 ${mensagem}
-`;
+    `;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1:generateMessage?key=${GEMINI_KEY}`,
@@ -28,8 +29,7 @@ ${mensagem}
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // Formato correto: input simples
-          input: { text: promptText }
+          input: { text: promptText } // 👈 formato correto
         })
       }
     );
@@ -37,7 +37,7 @@ ${mensagem}
     const data = await response.json();
     console.log("Resposta bruta da Gemini:", JSON.stringify(data, null, 2));
 
-    // Parse robusto
+    // Parse simples e seguro
     const texto = data?.output?.[0]?.content?.[0]?.text || "⚠️ IA não retornou texto válido";
 
     res.json({ resposta: texto });

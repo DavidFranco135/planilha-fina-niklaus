@@ -1,6 +1,7 @@
+// nextjs api route: /pages/api/webhook.js
 export const config = {
   api: {
-    bodyParser: true,
+    bodyParser: true, // garante que req.body seja JSON
   },
 };
 
@@ -34,8 +35,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Email não encontrado no webhook" });
     }
 
-    const orderStatus = (data.order_status || "").toLowerCase().trim(); // garantir lowercase
-    let appStatus = "pending";
+    // Normaliza o status
+    const orderStatus = (data.order_status || "").toLowerCase().trim();
+    let appStatus = "pending"; // padrão
 
     if (orderStatus === "paid" || orderStatus === "approved") {
       appStatus = "paid";
@@ -48,12 +50,15 @@ export default async function handler(req, res) {
     }
 
     const db = admin.firestore();
+
     await db.collection("users").doc(email.toLowerCase()).set(
       {
         status: appStatus,
         paid: appStatus === "paid",
         pending: appStatus !== "paid",
         lastOrderStatus: orderStatus,
+        approvedAt: data.approved_date || null,
+        refundedAt: data.refunded_at || null,
         updatedAt: new Date().toISOString(),
       },
       { merge: true }

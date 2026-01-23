@@ -238,7 +238,8 @@
             const fileInputPrincipalRef = useRef(null);
             const fileInputSecondaryRef = useRef(null);
             const notificationDropdownRef = useRef(null);
-            const chartInstanceRef = useRef(null);
+            const doughnutChartRef = useRef(null);
+            const barChartRef = useRef(null);
 
             // Estado para nova transação
             const [newTx, setNewTx] = useState({ 
@@ -779,31 +780,104 @@
             // Efeito para renderizar gráficos
             useEffect(() => {
                 if (activeTab === 'analytics' && transactions.length > 0) {
-                    const ctx = document.getElementById('analyticsChart');
-                    if (ctx) {
-                        if (chartInstanceRef.current) chartInstanceRef.current.destroy();
+                    const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
+                    const ctxBar = document.getElementById('analyticsBarChart');
+                    
+                    if (ctxDoughnut) {
+                        if (doughnutChartRef.current) doughnutChartRef.current.destroy();
                         
-                        // Processamento de dados para o gráfico (Entradas vs Saídas)
-                        const entries = currentTransactions.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + (t.amount || 0), 0);
-                        const exits = currentTransactions.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + (t.amount || 0), 0);
+                        const entriesVal = currentTransactions.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + (t.amount || 0), 0);
+                        const exitsVal = currentTransactions.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + (t.amount || 0), 0);
 
-                        chartInstanceRef.current = new Chart(ctx, {
+                        doughnutChartRef.current = new Chart(ctxDoughnut, {
                             type: 'doughnut',
                             data: {
                                 labels: ['Entradas', 'Saídas'],
                                 datasets: [{
-                                    data: [entries, exits],
+                                    data: [entriesVal, exitsVal],
                                     backgroundColor: ['#10b981', '#f43f5e'],
-                                    hoverOffset: 4,
-                                    borderWidth: 0
+                                    hoverOffset: 12,
+                                    borderWidth: 0,
+                                    borderRadius: 5
                                 }]
                             },
                             options: {
                                 responsive: true,
+                                cutout: '70%',
                                 plugins: {
                                     legend: {
                                         position: 'bottom',
-                                        labels: { color: '#94a3b8', font: { weight: 'bold' } }
+                                        labels: { color: '#94a3b8', font: { weight: 'bold', size: 10 }, padding: 20 }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    if (ctxBar) {
+                        if (barChartRef.current) barChartRef.current.destroy();
+
+                        const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
+                        const methodLabels = ['PIX', 'Crédito', 'Débito', 'Dinheiro'];
+                        const methodColors = {
+                            'PIX': '#10b981',      // Emerald
+                            'CREDITO': '#8b5cf6',  // Violet
+                            'DEBITO': '#0ea5e9',   // Sky Blue
+                            'DINHEIRO': '#f59e0b'  // Amber
+                        };
+
+                        const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).length);
+                        const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === m).length);
+
+                        barChartRef.current = new Chart(ctxBar, {
+                            type: 'bar',
+                            data: {
+                                labels: methodLabels,
+                                datasets: [
+                                    {
+                                        label: 'Qtd Entradas',
+                                        data: incomeCounts,
+                                        backgroundColor: methods.map(m => methodColors[m] + 'CC'), // 80% opacity
+                                        borderColor: methods.map(m => methodColors[m]),
+                                        borderWidth: 2,
+                                        borderRadius: 6
+                                    },
+                                    {
+                                        label: 'Qtd Saídas',
+                                        data: expenseCounts,
+                                        backgroundColor: methods.map(m => methodColors[m] + '66'), // 40% opacity
+                                        borderColor: methods.map(m => methodColors[m]),
+                                        borderWidth: 1,
+                                        borderRadius: 6,
+                                        borderDash: [5, 5]
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: { color: '#64748b', stepSize: 1, font: { size: 10 } },
+                                        grid: { color: '#1e293b' }
+                                    },
+                                    x: {
+                                        ticks: { color: '#94a3b8', font: { size: 11, weight: 'bold' } },
+                                        grid: { display: false }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                        labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true }
+                                    },
+                                    tooltip: {
+                                        backgroundColor: '#0f172a',
+                                        titleFont: { size: 12 },
+                                        bodyFont: { size: 11 },
+                                        padding: 12,
+                                        cornerRadius: 12
                                     }
                                 }
                             }
@@ -952,7 +1026,7 @@
                             <nav className="space-y-1">
                                 <button onClick=${() => setActiveTab('dashboard')} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-black transition-all ${activeTab === 'dashboard' ? 'sidebar-item-active' : 'text-slate-400 hover:text-slate-200'}`}><i className="fas fa-home w-4 text-xs"></i> Início</button>
                                 <button onClick=${() => navigateToExtrato(false)} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-black transition-all ${activeTab === 'transactions' && !viewSecondaryTransactions ? 'sidebar-item-active' : 'text-slate-400 hover:text-slate-200'}`}><i className="fas fa-list w-4 text-xs"></i> Extrato</button>
-                                <button onClick=${() => setActiveTab('analytics')} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-black transition-all ${activeTab === 'analytics' ? 'sidebar-item-active' : 'text-slate-400 hover:text-slate-200'}`}><i className="fas fa-chart-pie w-4 text-xs"></i> Análise</button>
+                                <button onClick=${() => setActiveTab('analytics')} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-black transition-all ${activeTab === 'analytics' ? 'sidebar-item-active' : 'text-slate-400 hover:text-slate-200'}`}><i className="fas fa-chart-pie w-4 text-xs"></i> Gráfico</button>
                                 <button onClick=${() => setActiveTab('secondary')} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-black transition-all ${activeTab === 'secondary' ? 'sidebar-item-active' : 'text-slate-400 hover:text-emerald-500'}`}><i className="fas fa-wallet w-4 text-xs"></i> ${secondaryName}</button>
                                 <button onClick=${() => setActiveTab('settings')} className=${`w-full flex items-center gap-3 p-3 rounded-xl font-black transition-all ${activeTab === 'settings' ? 'sidebar-item-active' : 'text-slate-400 hover:text-slate-200'}`}><i className="fas fa-user-cog w-4 text-xs"></i> Ajustes</button>
                             </nav>
@@ -1237,27 +1311,59 @@
 
                         <!-- Visualização: ANALYTICS (GRÁFICOS) -->
                         ${activeTab === 'analytics' ? html`
-                            <div className="space-y-6 animate-in">
-                                <h3 className="text-lg font-black text-white uppercase tracking-widest text-center">Análise Gráfica</h3>
-                                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl max-w-2xl mx-auto flex flex-col items-center">
-                                    <div className="w-full flex justify-between items-center mb-6">
-                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Entradas vs Saídas</h4>
-                                        <div className="flex gap-4">
-                                            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span className="text-[10px] font-black text-slate-500 uppercase">Entradas</span></div>
-                                            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span className="text-[10px] font-black text-slate-500 uppercase">Saídas</span></div>
+                            <div className="space-y-8 animate-in">
+                                <h3 className="text-lg font-black text-white uppercase tracking-widest text-center">Painel Gráfico</h3>
+                                
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <!-- Gráfico de Rosca: Entradas vs Saídas -->
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">Distribuição de Valores</h4>
+                                        <div className="relative w-full max-w-[320px] aspect-square">
+                                            <canvas id="analyticsDoughnutChart"></canvas>
+                                        </div>
+                                        <div className="mt-8 grid grid-cols-2 gap-4 w-full">
+                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
+                                                <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</p>
+                                            </div>
+                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
+                                                <p className="text-sm font-black text-violet-400">${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%</p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="relative w-full max-w-[400px] aspect-square">
-                                        <canvas id="analyticsChart"></canvas>
-                                    </div>
-                                    <div className="mt-10 grid grid-cols-2 gap-4 w-full">
-                                        <div className="bg-slate-800/50 p-5 rounded-3xl border border-slate-700 text-center">
-                                            <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Média de Gasto</p>
-                                            <p className="text-lg font-black text-rose-400">R$ ${(totals.exp / (currentTransactions.length || 1)).toLocaleString('pt-BR', {maximumFractionDigits: 0})}</p>
+
+                                    <!-- Gráfico de Barras: Quantidade por Canal -->
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Volume por Canal (Qtd)</h4>
+                                        <div className="flex-1 flex items-center min-h-[300px]">
+                                            <canvas id="analyticsBarChart"></canvas>
                                         </div>
-                                        <div className="bg-slate-800/50 p-5 rounded-3xl border border-slate-700 text-center">
-                                            <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Proporção</p>
-                                            <p className="text-lg font-black text-violet-400">${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%</p>
+                                        <div className="mt-4 text-[9px] text-slate-500 font-bold uppercase tracking-tighter text-center">
+                                            Barras superiores indicam entradas, barras tracejadas indicam saídas.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Estatísticas Rápidas -->
+                                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
+                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.length}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'INCOME').length}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'EXPENSE').length}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-violet-500 uppercase">Média Transação</span>
+                                            <p className="text-xl font-black text-white">R$ ${Math.round((totals.inc + totals.exp) / (currentTransactions.length || 1))}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1381,7 +1487,7 @@
                         </button>
                         <button onClick=${() => setActiveTab('analytics')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'analytics' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
                             <i className="fas fa-chart-pie text-sm"></i>
-                            <span className="text-[7px] font-black uppercase tracking-widest">Análise</span>
+                            <span className="text-[7px] font-black uppercase tracking-widest">Gráfico</span>
                         </button>
                         <button onClick=${() => navigateToExtrato(false)} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'transactions' && !viewSecondaryTransactions ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
                             <i className="fas fa-list text-sm"></i>

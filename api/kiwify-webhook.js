@@ -25,16 +25,15 @@ export default async function handler(req, res) {
     }
 
     const db = admin.firestore();
-
-    await db.collection("users").doc(email).set(
-      {
-        status: "approved",   // 👈 AQUI
-        paid: true,
-        pending: false,
-        paidAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+await db.collection("users").doc(email).set(
+  {
+    status: "paid",        // 👈 ESSENCIAL
+    paid: true,
+    pending: false,
+    paidAt: new Date().toISOString(),
+  },
+  { merge: true }
+);
 
     console.log("Acesso liberado para:", email);
 

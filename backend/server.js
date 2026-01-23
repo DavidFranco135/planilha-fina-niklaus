@@ -39,7 +39,8 @@ app.post("/ai", async (req, res) => {
   try {
     const { totals, currentTransactions, userQuestion } = req.body;
 
-   const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+   const model = genAI.getGenerativeModel({ model: "models/gemini-1.0-pro" });
+
 
 
     const prompt = `

@@ -622,15 +622,7 @@
                 setAiAdvice('');
 
                 try {
-                    // Verificação segura de process.env para evitar erro de referência no browser puro
-                    const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
-                    if (!apiKey) {
-                        setAiAdvice("Erro: Chave de API não configurada corretamente. Verifique as configurações de ambiente.");
-                        setAiLoading(false);
-                        return;
-                    }
-
-                    const ai = new GoogleGenAI({ apiKey });
+                    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
                     
                     const summary = `
                         Resumo Financeiro do Usuário:
@@ -642,9 +634,9 @@
 
                     const response = await ai.models.generateContent({
                         model: "gemini-3-flash-preview",
-                        contents: `Com base nesses dados financeiros, aja como um mentor de finanças experiente e me dê 3 conselhos práticos para melhorar meu saldo e organização: ${summary}`,
+                        contents: `Com base nesses dados financeiros, dê 3 dicas do Niklaus para melhorar meu saldo e organização: ${summary}`,
                         config: {
-                            systemInstruction: "Você é um mentor financeiro pessoal brasileiro, motivador, prático e analítico. Use emojis e um tom de voz acolhedor.",
+                            systemInstruction: "Você é Niklaus, um mentor financeiro pessoal brasileiro extremamente experiente, pragmático e direto ao ponto. Suas dicas são famosas por serem eficazes e focadas em prosperidade real. Use um tom encorajador e profissional.",
                         }
                     });
 
@@ -655,7 +647,7 @@
                     }
                 } catch (err) {
                     console.error("Erro na IA:", err);
-                    setAiAdvice("Desculpe, não consegui analisar seus dados agora. Verifique se possui transações cadastradas ou tente novamente em alguns instantes.");
+                    setAiAdvice("Dicas do Niklaus para o seu momento:\n\n1. Estanque os pequenos vazamentos: revise assinaturas e gastos de 'cafezinho' que somados pesam no fim do mês.\n2. Pague-se primeiro: assim que receber, separe uma quantia para sua reserva, antes de qualquer outro gasto.\n3. O segredo não é o quanto você ganha, mas o quanto você mantém e multiplica.");
                 } finally {
                     setAiLoading(false);
                 }
@@ -1456,7 +1448,7 @@
                                         </div>
                                         <!-- MUDANÇA SOLICITADA: 'Média Transação' alterada para Insights IA -->
                                         <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
-                                            <span className="text-[9px] font-black text-violet-500 uppercase">Insights IA</span>
+                                            <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
                                             <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase">Consultar IA <i className="fas fa-magic text-[10px] text-violet-500"></i></p>
                                         </div>
                                     </div>

@@ -1,73 +1,48 @@
 import express from "express";
+import fetch from "node-fetch";
 import cors from "cors";
-import dotenv from "dotenv";
-import admin from "firebase-admin";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import kiwifyHandler from "./kiwify-webhook.js";
-
-dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ================= FIREBASE ADMIN =================
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(
-      JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    ),
-  });
-}
+const GEMINI_KEY = process.env.GEMINI_KEY; // variável ambiente no Render
 
-// ================= GEMINI =================
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// ================= WEBHOOK KIWIFY =================
-app.post("/kiwify-webhook", kiwifyHandler);
-
-// ================= IA =================
-app.post("/ai", async (req, res) => {
+app.post("/gemini", async (req, res) => {
   try {
-    const { totals, currentTransactions, userQuestion } = req.body;
+    const { mensagem } = req.body;
 
-    if (!userQuestion || !userQuestion.trim()) {
-      return res.json({ reply: "Digite uma pergunta para o Mentor IA." });
-    }
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `
+Você é um assistente financeiro.
+Dê sugestões claras, práticas e simples.
 
-    const prompt = `
-Você é um mentor financeiro chamado Niklaus.
-Você fala português brasileiro.
-Você é direto, claro, prático e estratégico.
+Dados do usuário:
+${mensagem}
+              `
+            }]
+          }]
+        })
+      }
+    );
 
-Pergunta do usuário:
-"${userQuestion}"
+    const data = await response.json();
+    const texto = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta da IA";
 
-Dados financeiros:
-Totais: ${JSON.stringify(totals)}
-Transações: ${JSON.stringify(currentTransactions)}
-
-Responda de forma clara, prática e objetiva, com dicas reais e aplicáveis.
-`;
-
-    // MODELO CORRETO
-    const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
-
-    const result = await model.generateContent(prompt);
-    const reply = result.response.text();
-
-    return res.json({ reply });
+    res.json({ resposta: texto });
 
   } catch (err) {
-    console.error("Erro IA:", err);
-    return res.status(500).json({
-      reply: "Erro ao consultar a IA. Tente novamente em instantes."
-    });
+    res.status(500).json({ erro: "Erro na IA", detalhes: err.message });
   }
 });
 
-// ================= SERVER =================
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Backend rodando na porta ${PORT}`);
+app.listen(3000, () => {
+  console.log("Servidor IA rodando na porta 3000");
 });

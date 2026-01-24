@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import * as ga from "@google/generative-ai"; // CORREÇÃO: import via namespace
+import * as ga from "@google/generative-ai"; // import via namespace
 
 const app = express();
 app.use(cors());
@@ -12,7 +12,6 @@ app.post("/gemini", async (req, res) => {
   try {
     const { mensagem } = req.body;
 
-    // Cria cliente Gemini
     const ai = new ga.GoogleGenerativeAI({ apiKey: GEMINI_KEY });
 
     const promptText = `
@@ -25,15 +24,13 @@ Dados do usuário:
 ${mensagem}
     `;
 
-    const response = await ai.models.generateContent({
+    // ✅ chamada correta
+    const response = await ai.generateText({
       model: "gemini-3",
-      contents: promptText,
-      config: {
-        systemInstruction: "Você é Niklaus, mentor financeiro experiente, pragmático e direto. Dê 3 dicas financeiras em português com emojis moderados."
-      }
+      prompt: promptText
     });
 
-    const texto = response?.text || "⚠️ IA não retornou texto válido";
+    const texto = response?.outputText || "⚠️ IA não retornou texto válido";
 
     res.json({ resposta: texto });
 

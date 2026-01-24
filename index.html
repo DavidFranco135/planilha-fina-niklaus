@@ -349,22 +349,32 @@
                     setLoading(false);
                 });
 
-                // Monitoramento de sugestões (feedback do admin)
-                let unsubSugg = () => {};
-                if (sid === 'niklaus') {
-                    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-                    unsubSugg = onSnapshot(qs, (s) => {
-                        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
-                    });
-                } else {
-                    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-                    unsubSugg = onSnapshot(qsUser, (s) => {
-                        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                        setUserSuggestions(suggestions);
-                        const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
-                        setUnreadCount(unread);
-                    });
-                }
+                // Dentro de startDataSync(sid, userEmail)
+let unsubSugg = () => {};
+
+// Forçamos o e-mail para minúsculo para evitar erro de digitação
+if (userEmail?.toLowerCase() === 'davidbhmg147@gmail.com') {
+    // ADMIN: Busca todas as sugestões
+    // Se o app travar, remova o orderBy temporariamente para testar
+    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+    
+    unsubSugg = onSnapshot(qs, (s) => {
+        const list = s.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log("Sugestões recebidas:", list); // Debug no F12
+        setSuggestions(list);
+        setUnreadCount(list.filter(i => i.viewedByAdmin === false).length);
+    }, (error) => {
+        console.error("Erro na query de admin:", error);
+    });
+} else {
+    // USUÁRIO: Busca apenas as dele
+    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+    unsubSugg = onSnapshot(qsUser, (s) => {
+        const list = s.docs.map(d => ({ id: d.id, ...d.data() }));
+        setSuggestions(list);
+        setUnreadCount(list.filter(i => i.reply && !i.replyViewed).length);
+    });
+}
 
                 return () => { unsubUser(); unsubTx(); unsubSugg(); };
             };

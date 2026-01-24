@@ -763,7 +763,25 @@ const sendSuggestion = async () => {
 };
 
 // Função exclusiva para o Niklaus responder
-v
+const sendReply = async (sugId, replyText) => {
+    if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
+    try {
+        await updateDoc(doc(db, "suggestions", sugId), {
+            reply: replyText,
+            repliedAt: serverTimestamp(),
+            replyViewed: false
+        });
+        alert("Resposta enviada com sucesso!");
+    } catch (e) {
+        console.error("Erro ao responder:", e);
+    }
+};
+
+const markReplyAsViewed = async (sugId) => {
+    try {
+        await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
+    } catch (e) { console.error(e); }
+};
 
             /**
              * Compartilhamento do app (Web Share API)

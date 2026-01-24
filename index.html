@@ -736,35 +736,7 @@ const generateAIAdvice = async () => {
             /**
              * Envio de feedback/sugestão
              */
-            const [suggestions, setSuggestions] = React.useState([]); // Para armazenar a lista (visível ao admin)
-
-// Função para o Usuário enviar
-const sendSuggestion = async () => {
-    if (!suggestionText.trim()) return;
-    setSendingSuggestion(true);
-    try {
-        await addDoc(collection(db, "suggestions"), {
-            userId: user.id,
-            userName: profileName || 'Usuário', // Importante para você saber quem mandou
-            userEmail: user.email,
-            message: suggestionText,
-            createdAt: serverTimestamp(),
-            reply: null,
-            repliedAt: null,
-            replyViewed: false
-        });
-        setSuggestionText('');
-        alert("Obrigado! Sua sugestão foi enviada com sucesso.");
-    } catch (e) { 
-        alert("Erro ao enviar sugestão."); 
-    } finally { 
-        setSendingSuggestion(false); 
-    }
-};
-
-// Função exclusiva para o Niklaus responder
-v
-
+           v
             /**
              * Compartilhamento do app (Web Share API)
              */

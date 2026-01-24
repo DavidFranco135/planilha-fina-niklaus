@@ -1,6 +1,5 @@
 import admin from "firebase-admin";
 
-// Inicializa o Firebase apenas se não estiver inicializado
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(
@@ -12,30 +11,53 @@ if (!admin.apps.length) {
 export default async function kiwifyWebhook(req, res) {
   try {
     const data = req.body;
-
-    // Captura o email independente de como a Kiwify envie o campo
-    const emailBruto = data?.Customer?.email || data?.customer?.email || data?.buyer?.email;
     
+    // Identifica o status da ordem na Kiwify
+    const status = data?.order_status; 
+    const emailBruto = data?.Customer?.email || data?.customer?.email || data?.buyer?.email;
+
     if (!emailBruto) {
-      return res.status(400).json({ error: "Email não encontrado" });
+      return res.status(400).json({ error: "Email não enviado" });
     }
 
     const email = emailBruto.toLowerCase().trim();
     const db = admin.firestore();
+    const userRef = db.collection("users").doc(email);
 
-    // Gravação imediata no Firestore
-    await db.collection("users").doc(email).set({
-      paid: true,
-      pending: false,
-      paidAt: new Date().toISOString(),
-      updatedBy: "webhook_kiwify"
-    }, { merge: true });
+    // LÓGICA DE STATUS
+    if (status === "paid" || status === "approved") {
+      // COMPRA APROVADA
+      await userRef.set({
+        paid: true,
+        pending: false,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      console.log(`✅ ACESSO LIBERADO: ${email}`);
+    } 
+    else if (status === "waiting_payment" || status === "pending") {
+      // AGUARDANDO (Boleto/Pix gerado)
+      await userRef.set({
+        paid: false,
+        pending: true,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      console.log(`⏳ PAGAMENTO PENDENTE: ${email}`);
+    } 
+    else if (status === "refunded" || status === "charged_back" || status === "refused" || status === "canceled") {
+      // FALHA, CANCELAMENTO OU REEMBOLSO
+      await userRef.set({
+        paid: false,
+        pending: false,
+        updatedAt: new Date().toISOString(),
+        reason: status // Guarda o motivo do bloqueio
+      }, { merge: true });
+      console.log(`🚫 ACESSO BLOQUEADO (Status: ${status}): ${email}`);
+    }
 
-    console.log(`✅ Acesso liberado: ${email}`);
     return res.status(200).json({ ok: true });
 
   } catch (err) {
-    console.error("❌ Erro Webhook:", err);
+    console.error("❌ Erro no processamento do webhook:", err);
     return res.status(500).json({ error: "Erro interno" });
   }
 }

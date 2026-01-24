@@ -167,31 +167,27 @@
 <body>
     <div id="root"></div>
 
-    <script type="module">
-       
-    // Adicione esta importação específica para o Auth
-    import { 
-        getAuth, 
-        createUserWithEmailAndPassword, 
-        sendPasswordResetEmail 
-    } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
-    
-    import { doc, getDoc, setDoc } from "firebase/firestore";
-    // ... os outros imports que você já tem (React, initializeApp, etc)
+   <script type="module">
+        // 1. IMPORTS NO TOPO (Essencial para não dar tela azul)
+        import { initializeApp } from "firebase/app";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            sendPasswordResetEmail 
+        } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js"; // Importação direta do Auth
+        import { 
+            getFirestore, doc, setDoc, getDoc, collection, 
+            addDoc, query, where, onSnapshot, deleteDoc, updateDoc, 
+            writeBatch, serverTimestamp, orderBy, getDocs 
+        } from "firebase/firestore";
         import React, { useState, useEffect, useMemo, useRef } from 'react';
         import ReactDOM from 'react-dom';
         import htm from 'htm';
-        import { initializeApp } from "firebase/app";
-        import { 
-            getFirestore, doc, setDoc, getDoc, collection, 
-            addDoc, query, where, onSnapshot, deleteDoc, updateDoc, writeBatch, serverTimestamp, orderBy, getDocs
-        } from "firebase/firestore";
         import { GoogleGenAI } from "@google/genai";
 
-        // Bind do htm para usar sintaxe similar a JSX sem necessidade de build step
         const html = htm.bind(React.createElement);
         
-        // Configuração do Firebase
+        // 2. CONFIGURAÇÃO E INICIALIZAÇÃO
         const firebaseConfig = {
             apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
             authDomain: "planilha-fina.firebaseapp.com",
@@ -203,6 +199,9 @@
 
         const fbApp = initializeApp(firebaseConfig);
         const db = getFirestore(fbApp);
+        const auth = getAuth(fbApp); // Inicializa o serviço de autenticação aqui
+
+        // ... Resto dos sons e componentes (Avatar, etc) ...
 
         // Carregamento prévio de efeitos sonoros
         const bellSound = new Audio('https://assets.mixkit.co/active_storage/sfx/3005/3005-preview.mp3');

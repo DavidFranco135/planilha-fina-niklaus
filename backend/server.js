@@ -1,8 +1,13 @@
 import express from "express";
+import fetch from "node-fetch";
 import cors from "cors";
-import * as ga from "@google/generative-ai"; // import via namespace
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
+
+// Configuração do CORS para permitir seu frontend
 app.use(cors());
 app.use(express.json());
 
@@ -12,7 +17,9 @@ app.post("/gemini", async (req, res) => {
   try {
     const { mensagem } = req.body;
 
-    const ai = new ga.GoogleGenerativeAI({ apiKey: GEMINI_KEY });
+    if (!GEMINI_KEY) {
+      return res.status(500).json({ erro: "Chave GEMINI_KEY não configurada no servidor." });
+    }
 
     const promptText = `
 Você é Niklaus, mentor financeiro brasileiro, direto, pragmático e experiente.
@@ -24,23 +31,41 @@ Dados do usuário:
 ${mensagem}
     `;
 
-    // ✅ chamada correta
-    const response = await ai.generateText({
-      model: "gemini-3",
-      prompt: promptText
+    // ENDPOINT ATUALIZADO (Gemini 1.5 Flash)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: promptText }]
+          }
+        ]
+      })
     });
 
-    const texto = response?.outputText || "⚠️ IA não retornou texto válido";
+    const data = await response.json();
+
+    // Verificação de erro vindo da API da Google
+    if (data.error) {
+      console.error("Erro API Google:", data.error);
+      return res.status(500).json({ erro: data.error.message });
+    }
+
+    // Extração correta do texto na estrutura do Gemini 1.5
+    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ Niklaus não conseguiu processar os dados agora.";
 
     res.json({ resposta: texto });
 
   } catch (err) {
-    console.error("Erro Gemini:", err);
-    res.status(500).json({ erro: "Erro na IA", detalhes: err.message });
+    console.error("Erro Servidor:", err);
+    res.status(500).json({ erro: "Erro interno no servidor", detalhes: err.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor IA Niklaus rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor Niklaus rodando na porta ${PORT}`);
 });

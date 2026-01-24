@@ -1,22 +1,19 @@
 import express from "express";
 import cors from "cors";
-import { GoogleGenAI } from "@google/generative-ai";
+import GoogleGenerativeAI from "@google/generative-ai"; // CORREÇÃO
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Certifique-se de ter configurado a variável no Render: GEMINI_KEY
 const GEMINI_KEY = process.env.GEMINI_KEY;
 
 app.post("/gemini", async (req, res) => {
   try {
     const { mensagem } = req.body;
 
-    // Cria o cliente da Gemini
-    const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
+    const ai = new GoogleGenerativeAI({ apiKey: GEMINI_KEY }); // CORREÇÃO
 
-    // Prompt do Niklaus
     const promptText = `
 Você é Niklaus, mentor financeiro brasileiro, direto, pragmático e experiente.
 Gere 3 dicas financeiras estratégicas, objetivas e aplicáveis.
@@ -27,7 +24,6 @@ Dados do usuário:
 ${mensagem}
     `;
 
-    // Chamada ao modelo Gemini
     const response = await ai.models.generateContent({
       model: "gemini-3", // modelo disponível
       contents: promptText,

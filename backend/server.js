@@ -15,57 +15,40 @@ app.post("/gemini", async (req, res) => {
   try {
     const { mensagem } = req.body;
 
-    if (!GEMINI_KEY) {
-      return res.status(500).json({ erro: "Chave GEMINI_KEY não encontrada no Render." });
-    }
+    // Prompt do Niklaus
+    const promptText = `Você é Niklaus, mentor financeiro. Analise e dê 3 dicas curtas para: ${mensagem}`;
 
-    // Prompt configurado para o Niklaus
-    const payload = {
-      contents: [{
-        parts: [{ text: `Você é Niklaus, mentor financeiro. Responda em português: ${mensagem}` }]
-      }]
-    };
-
-    // TENTATIVA 1: O formato mais aceito hoje (v1beta + gemini-1.5-flash)
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+    // Esta é a URL e o MODELO com maior taxa de aceitação para chaves novas e antigas
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_KEY}`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: promptText }]
+        }]
+      })
     });
 
     const data = await response.json();
 
-    // Se der erro 404, tentamos o modelo alternativo automaticamente
-    if (data.error && data.error.code === 404) {
-      console.log("Tentando modelo alternativo...");
-      const altUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`;
-      const altRes = await fetch(altUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const altData = await altRes.json();
-      
-      if (altData.error) throw new Error(altData.error.message);
-      
-      const textoAlt = altData?.candidates?.[0]?.content?.parts?.[0]?.text;
-      return res.json({ resposta: textoAlt });
-    }
+    // Log para depuração no Render
+    console.log("Status da Resposta:", response.status);
 
     if (data.error) {
-      throw new Error(data.error.message);
+      console.error("Erro detalhado Google:", data.error);
+      return res.status(data.error.code || 500).json({ erro: data.error.message });
     }
 
-    const textoFinal = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Niklaus está processando...";
+    const textoFinal = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Niklaus está meditando... tente novamente.";
     res.json({ resposta: textoFinal });
 
   } catch (err) {
-    console.error("Erro Final:", err.message);
-    res.status(500).json({ erro: "Erro na IA", detalhes: err.message });
+    console.error("Erro no Catch:", err.message);
+    res.status(500).json({ erro: "Erro de conexão", detalhes: err.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Niklaus rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log("🚀 Servidor Niklaus Pronto"));

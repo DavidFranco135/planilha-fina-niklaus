@@ -12,52 +12,55 @@ export default async function kiwifyWebhook(req, res) {
   try {
     const data = req.body;
     
-    // Identifica o status da ordem na Kiwify
-    const status = data?.order_status; 
-    const emailBruto = data?.Customer?.email || data?.customer?.email || data?.buyer?.email;
+    // A Kiwify envia os dados dentro de 'order'
+    const orderData = data?.order;
+    const status = orderData?.order_status;
+    const emailBruto = orderData?.Customer?.email;
 
     if (!emailBruto) {
-      return res.status(400).json({ error: "Email não enviado" });
+      console.error("❌ Webhook recebido sem email de cliente.");
+      return res.status(400).json({ error: "Email não encontrado" });
     }
 
     const email = emailBruto.toLowerCase().trim();
     const db = admin.firestore();
     const userRef = db.collection("users").doc(email);
 
-    // LÓGICA DE STATUS
+    console.log(`Operação: ${status} para o usuário: ${email}`);
+
+    // LÓGICA DE BLOQUEIO / LIBERAÇÃO
     if (status === "paid" || status === "approved") {
-      // COMPRA APROVADA
+      // LIBERA ACESSO
       await userRef.set({
         paid: true,
         pending: false,
+        kiwifyStatus: status,
         updatedAt: new Date().toISOString()
       }, { merge: true });
-      console.log(`✅ ACESSO LIBERADO: ${email}`);
+      console.log(`✅ Usuário Liberado: ${email}`);
     } 
-    else if (status === "waiting_payment" || status === "pending") {
-      // AGUARDANDO (Boleto/Pix gerado)
+    else if (status === "refunded" || status === "charged_back") {
+      // BLOQUEIO AUTOMÁTICO POR REEMBOLSO
       await userRef.set({
         paid: false,
-        pending: true,
+        pending: false, // Defina como false para bloquear o acesso se seu front checa 'paid'
+        kiwifyStatus: status,
         updatedAt: new Date().toISOString()
       }, { merge: true });
-      console.log(`⏳ PAGAMENTO PENDENTE: ${email}`);
-    } 
-    else if (status === "refunded" || status === "charged_back" || status === "refused" || status === "canceled") {
-      // FALHA, CANCELAMENTO OU REEMBOLSO
+      console.log(`🚫 Usuário BLOQUEADO (Reembolso): ${email}`);
+    }
+    else {
+      // Outros status (ex: recusado, pendente)
       await userRef.set({
-        paid: false,
-        pending: false,
-        updatedAt: new Date().toISOString(),
-        reason: status // Guarda o motivo do bloqueio
+        kiwifyStatus: status,
+        updatedAt: new Date().toISOString()
       }, { merge: true });
-      console.log(`🚫 ACESSO BLOQUEADO (Status: ${status}): ${email}`);
     }
 
     return res.status(200).json({ ok: true });
 
   } catch (err) {
-    console.error("❌ Erro no processamento do webhook:", err);
-    return res.status(500).json({ error: "Erro interno" });
+    console.error("❌ Erro fatal no Webhook:", err);
+    return res.status(500).json({ error: "Erro interno no servidor" });
   }
 }

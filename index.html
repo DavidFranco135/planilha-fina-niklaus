@@ -349,32 +349,22 @@
                     setLoading(false);
                 });
 
-                // Dentro de startDataSync(sid, userEmail)
-let unsubSugg = () => {};
-
-// Forçamos o e-mail para minúsculo para evitar erro de digitação
-if (userEmail?.toLowerCase() === 'davidbhmg147@gmail.com') {
-    // ADMIN: Busca todas as sugestões
-    // Se o app travar, remova o orderBy temporariamente para testar
-    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-    
-    unsubSugg = onSnapshot(qs, (s) => {
-        const list = s.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log("Sugestões recebidas:", list); // Debug no F12
-        setSuggestions(list);
-        setUnreadCount(list.filter(i => i.viewedByAdmin === false).length);
-    }, (error) => {
-        console.error("Erro na query de admin:", error);
-    });
-} else {
-    // USUÁRIO: Busca apenas as dele
-    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-    unsubSugg = onSnapshot(qsUser, (s) => {
-        const list = s.docs.map(d => ({ id: d.id, ...d.data() }));
-        setSuggestions(list);
-        setUnreadCount(list.filter(i => i.reply && !i.replyViewed).length);
-    });
-}
+                // Monitoramento de sugestões (feedback do admin)
+                let unsubSugg = () => {};
+                if (sid === 'niklaus') {
+                    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+                    unsubSugg = onSnapshot(qs, (s) => {
+                        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
+                    });
+                } else {
+                    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+                    unsubSugg = onSnapshot(qsUser, (s) => {
+                        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                        setUserSuggestions(suggestions);
+                        const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
+                        setUnreadCount(unread);
+                    });
+                }
 
                 return () => { unsubUser(); unsubTx(); unsubSugg(); };
             };
@@ -1588,66 +1578,50 @@ const markReplyAsViewed = async (sugId) => {
         </h3>
     </div>
 
-   ${user.email === 'davidbhmg147@gmail.com' ? html`
-    <div className="space-y-4">
-        <h3 className="text-[10px] font-black text-violet-400 uppercase tracking-[0.3em] mb-4">Painel do Administrador</h3>
-        
-        ${suggestions.length === 0 ? html`
-            <div className="p-10 text-center glass rounded-3xl border-dashed border-2 border-slate-800">
-                <p className="text-[10px] text-slate-600 uppercase font-black">Nenhuma sugestão nova no momento.</p>
-            </div>
-        ` : suggestions.map(sug => html`
-            <div className=${`p-4 rounded-2xl border transition-all ${!sug.viewedByAdmin ? 'bg-violet-600/10 border-violet-600/30 shadow-lg shadow-violet-600/5' : 'bg-slate-900/40 border-slate-800'}`}>
-                <div className="flex justify-between items-center mb-2">
-                    <span className="text-[9px] font-black text-white uppercase">${sug.userName || 'Usuário'}</span>
-                    <span className="text-[8px] text-slate-500 font-bold">
-                        ${sug.createdAt?.seconds ? new Date(sug.createdAt.seconds * 1000).toLocaleDateString() : 'Recentemente'}
-                    </span>
+    ${user.email === 'davidbhmg147@gmail.com' ? html`
+        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+            ${suggestions.length === 0 ? html`<p className="text-[10px] text-slate-500 text-center uppercase">Nenhuma sugestão nova.</p>` : ''}
+            ${suggestions.map(sug => html`
+                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
+                    <div className="flex justify-between mb-2">
+                        <span className="text-[8px] font-black text-violet-400 uppercase">${sug.userName}</span>
+                        <span className="text-[8px] text-slate-600">${new Date(sug.createdAt?.toDate()).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mb-3">${sug.message}</p>
+                    
+                    ${sug.reply ? html`
+                        <div className="mt-2 p-2 bg-violet-600/10 rounded-xl border border-violet-600/20">
+                            <p className="text-[10px] text-violet-400 font-bold">Sua resposta: ${sug.reply}</p>
+                        </div>
+                    ` : html`
+                        <div className="flex gap-2">
+                            <input type="text" id=${`reply-${sug.id}`} placeholder="Responder..." className="flex-1 bg-slate-800 border-0 rounded-lg text-[10px] p-2 text-white outline-none" />
+                            <button onClick=${() => {
+                                const input = document.getElementById(`reply-${sug.id}`);
+                                sendReply(sug.id, input.value);
+                                input.value = '';
+                            }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px]"><i className="fas fa-paper-plane"></i></button>
+                        </div>
+                    `}
                 </div>
-                
-                <p className="text-xs text-slate-300 mb-4 leading-relaxed">
-                    ${sug.text || sug.message || 'Mensagem vazia'}
-                </p>
-                
-                ${sug.reply ? html`
-                    <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                        <p className="text-[10px] text-emerald-400 font-medium">
-                            <i className="fas fa-check-circle mr-2"></i>Sua resposta: ${sug.reply}
-                        </p>
-                    </div>
-                ` : html`
-                    <div className="flex gap-2">
-                        <input type="text" id=${`reply-${sug.id}`} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl text-[11px] p-3 text-white outline-none focus:border-violet-500 transition-all" placeholder="Escreva uma resposta..." />
-                        <button onClick=${() => {
-                            const input = document.getElementById(`reply-${sug.id}`);
-                            sendReply(sug.id, input.value);
-                            input.value = '';
-                        }} className="bg-violet-600 px-4 rounded-xl hover:bg-violet-500 active:scale-90 transition-all">
-                            <i className="fas fa-paper-plane text-[10px]"></i>
-                        </button>
-                    </div>
-                `}
-            </div>
-        `)}
-    </div>
-` : html`
-    <div className="space-y-4 animate-in">
-        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">Sugerir Melhoria</h3>
-        <textarea 
-            value=${suggestionText}
-            onInput=${e => setSuggestionText(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-300 min-h-[120px] outline-none focus:border-violet-500 transition-all" 
-            placeholder="No que podemos melhorar o app?"></textarea>
-        
-        <button 
-            disabled=${!suggestionText.trim()}
-            onClick=${sendSuggestion} 
-            className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all disabled:opacity-50 disabled:active:scale-100">
-            Enviar Feedback
-        </button>
-    </div>
-
-
+            `)}
+        </div>
+    ` : html`
+        <div className="space-y-4">
+            <textarea 
+                value=${suggestionText}
+                onInput=${e => setSuggestionText(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px] outline-none focus:border-violet-500 transition-all" 
+                placeholder="No que podemos melhorar o app?"></textarea>
+            <button 
+                disabled=${sendingSuggestion}
+                onClick=${sendSuggestion} 
+                className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">
+                ${sendingSuggestion ? 'Enviando...' : 'Enviar Feedback'}
+            </button>
+        </div>
+    `}
+</div>
 
             <div className="pt-4 space-y-4">
                 <button onClick=${async () => {

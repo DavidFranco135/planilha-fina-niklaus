@@ -1558,29 +1558,37 @@ Transações: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ $
                         <i className="fas fa-plus text-xl group-hover:rotate-90 transition-transform"></i>
                     </button>
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 flex justify-around p-4 z-[80] shadow-2xl">
-                        <button onClick=${() => setActiveTab('dashboard')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'dashboard' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
-                            <div className="relative">
-                                <i className="fas fa-home text-sm"></i>
-                                ${activeTab !== 'dashboard' && unreadCount > 0 ? html`<span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-950 animate-pulse"></span>` : ''}
-                            </div>
-                            <span className="text-[7px] font-black uppercase tracking-widest">Início</span>
-                        </button>
-                        <button onClick=${() => setActiveTab('analytics')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'analytics' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
-                            <i className="fas fa-chart-pie text-sm"></i>
-                            <span className="text-[7px] font-black uppercase tracking-widest">Gráfico</span>
-                        </button>
-                        <button onClick=${() => navigateToExtrato(false)} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'transactions' && !viewSecondaryTransactions ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
-                            <i className="fas fa-list text-sm"></i>
-                            <span className="text-[7px] font-black uppercase tracking-widest">Extrato</span>
-                        </button>
-                        <button onClick=${() => setActiveTab('settings')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'settings' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
-                            <div className="relative">
-                                <i className="fas fa-user-cog text-sm"></i>
-                                ${unreadCount > 0 ? html`<span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-950 animate-pulse"></span>` : ''}
-                            </div>
-                            <span className="text-[7px] font-black uppercase tracking-widest">Perfil</span>
-                        </button>
-                    </nav>
+    <button onClick=${() => setActiveTab('dashboard')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'dashboard' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <div className="relative">
+            <i className="fas fa-home text-sm"></i>
+            ${activeTab !== 'dashboard' && unreadCount > 0 ? html`<span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-950 animate-pulse"></span>` : ''}
+        </div>
+        <span className="text-[7px] font-black uppercase tracking-widest">Início</span>
+    </button>
+
+    <button onClick=${() => setActiveTab('analytics')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'analytics' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <i className="fas fa-chart-pie text-sm"></i>
+        <span className="text-[7px] font-black uppercase tracking-widest">Gráfico</span>
+    </button>
+
+    <button onClick=${() => setActiveTab('secondary')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'secondary' ? 'text-emerald-400 opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <i className="fas fa-wallet text-sm"></i>
+        <span className="text-[7px] font-black uppercase tracking-widest">${secondaryName || 'Secundária'}</span>
+    </button>
+
+    <button onClick=${() => navigateToExtrato(false)} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'transactions' && !viewSecondaryTransactions ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <i className="fas fa-list text-sm"></i>
+        <span className="text-[7px] font-black uppercase tracking-widest">Extrato</span>
+    </button>
+
+    <button onClick=${() => setActiveTab('settings')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'settings' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <div className="relative">
+            <i className="fas fa-user-cog text-sm"></i>
+            ${unreadCount > 0 ? html`<span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-950 animate-pulse"></span>` : ''}
+        </div>
+        <span className="text-[7px] font-black uppercase tracking-widest">Perfil</span>
+    </button>
+</nav>
                 </div>`;
         };
 

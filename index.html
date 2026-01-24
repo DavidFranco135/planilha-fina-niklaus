@@ -287,39 +287,40 @@
             const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
 
             // Sugestões e Notificações
-            const [suggestionText, setSuggestionText] = useState('');
-            const [sendingSuggestion, setSendingSuggestion] = useState(false);
-            const [userSuggestions, setUserSuggestions] = useState([]);
-            const [adminSuggestions, setAdminSuggestions] = useState([]);
-            const [unreadCount, setUnreadCount] = useState(0);
-            const [showNotificationList, setShowNotificationList] = useState(false);
-
-            const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'niklaus', [user]);
-
-            // Funções de feedback sonoro
-            const playMoneySfx = () => {
-                if (soundEnabled) {
-                    bellSound.currentTime = 0;
-                    bellSound.play().catch(e => console.log('Audio play blocked'));
-                }
-            };
-
-            const playTrashSfx = () => {
-                if (soundEnabled) {
-                    trashSound.currentTime = 0;
-                    trashSound.play().catch(e => console.log('Audio play blocked'));
-                }
-            };
-// --- 1. ESTADOS (useState) ---
+            // --- 1. ESTADOS (useState) ---
+const [suggestionText, setSuggestionText] = React.useState('');
+const [sendingSuggestion, setSendingSuggestion] = React.useState(false);
+const [userSuggestions, setUserSuggestions] = React.useState([]);
+const [adminSuggestions, setAdminSuggestions] = React.useState([]);
+const [unreadCount, setUnreadCount] = React.useState(0);
+const [showNotificationList, setShowNotificationList] = React.useState(false);
 const [notificacoes, setNotificacoes] = React.useState([]);
 
-// --- 2. O VIGIA (useEffect) ---
-// Adicione este bloco abaixo dos seus outros useEffects
-React.useEffect(() => {
-    // Se não houver usuário ou se for você (o admin), não precisa monitorar o sininho
-    if (!user || user.email === 'davidbhmg147@gmail.com') return;
+// CORREÇÃO: isAdmin agora checa o e-mail correto davidbhmg147@gmail.com
+const isAdmin = React.useMemo(() => 
+    user?.email?.toLowerCase() === 'davidbhmg147@gmail.com', 
+[user]);
 
-    // Monitora sugestões do usuário logado que foram respondidas mas ainda não lidas
+// --- 2. FUNÇÕES DE SOM (Originais mantidas) ---
+const playMoneySfx = () => {
+    if (soundEnabled) {
+        bellSound.currentTime = 0;
+        bellSound.play().catch(e => console.log('Audio play blocked'));
+    }
+};
+
+const playTrashSfx = () => {
+    if (soundEnabled) {
+        trashSound.currentTime = 0;
+        trashSound.play().catch(e => console.log('Audio play blocked'));
+    }
+};
+
+// --- 3. VIGIA DE NOTIFICAÇÕES (Para o usuário ver o sino) ---
+React.useEffect(() => {
+    // Se não houver usuário ou se for você (o admin), não monitora o sino de usuário
+    if (!user || isAdmin) return;
+
     const q = query(
         collection(db, "suggestions"),
         where("userId", "==", user.id),
@@ -327,26 +328,25 @@ React.useEffect(() => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const novasNotificacoes = snapshot.docs
+        const novas = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(sug => sug.reply !== null); // Só o que tem resposta do Niklaus
+            .filter(sug => sug.reply !== null);
             
-        setNotificacoes(novasNotificacoes);
+        setNotificacoes(novas);
+        setUnreadCount(novas.length);
         
-        // Alerta sonoro de nova resposta
-        if (novasNotificacoes.length > 0 && soundEnabled) {
+        if (novas.length > 0 && soundEnabled) {
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(() => {});
         }
     });
 
     return () => unsubscribe();
-}, [user]);
+}, [user, isAdmin, soundEnabled]);
 
-// --- 3. AS FERRAMENTAS (Funções de Ação) ---
-// Mantenha estas funções exatamente onde elas já estavam
+// --- 4. FUNÇÕES DE AÇÃO (Admin e Sugestões) ---
 const sendReply = async (sugId, replyText) => {
-    if (user.email !== 'davidbhmg147@gmail.com') return;
+    if (!isAdmin) return;
     try {
         await updateDoc(doc(db, "suggestions", sugId), {
             reply: replyText,
@@ -354,15 +354,68 @@ const sendReply = async (sugId, replyText) => {
             replyViewed: false
         });
         alert("Resposta enviada com sucesso!");
-    } catch (e) {
-        console.error("Erro ao responder:", e);
-    }
+    } catch (e) { console.error("Erro ao responder:", e); }
 };
 
 const markReplyAsViewed = async (sugId) => {
     try {
         await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
     } catch (e) { console.error(e); }
+};
+
+// --- 5. SINCRONIZAÇÃO DE DADOS (startDataSync) ---
+const startDataSync = (sid) => {
+    setLoading(true);
+    let unsubSugg = () => {};
+
+    const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+        if (s.exists()) {
+            const userData = { id: s.id, ...s.data() };
+            const emailLimpo = userData.email?.toLowerCase();
+            const isUserAdmin = emailLimpo === 'davidbhmg147@gmail.com';
+            
+            // Bloqueio para usuários não pagos (Admin entra sempre)
+            if (!isUserAdmin && userData.status !== 'paid') {
+                 alert("Acesso Bloqueado.");
+                 handleLogout();
+                 return;
+            }
+
+            setUser(userData);
+            setProfileName(userData.appName || 'Meu Perfil');
+            setSecondaryName(userData.secondaryName || 'Conta 2');
+            setProfilePhoto(userData.photoURL || '');
+            setSecondaryPhoto(userData.secondaryPhotoURL || '');
+            setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
+
+            // Sincroniza lista de sugestões
+            if (unsubSugg) unsubSugg();
+            
+            if (isUserAdmin) {
+                const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+                unsubSugg = onSnapshot(qs, (snap) => {
+                    setAdminSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
+            } else {
+                const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+                unsubSugg = onSnapshot(qsUser, (snap) => {
+                    const sugs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setUserSuggestions(sugs);
+                });
+            }
+        } else {
+            handleLogout();
+        }
+    });
+
+    // Transações
+    const unsubTx = onSnapshot(query(collection(db, "transactions"), where("userId", "==", sid)), (s) => {
+        const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
+        setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+        setLoading(false);
+    });
+
+    return () => { unsubUser(); unsubTx(); if(unsubSugg) unsubSugg(); };
 };
             /**
              * Inicia a sincronização de dados em tempo real com o Firestore

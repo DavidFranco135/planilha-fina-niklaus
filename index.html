@@ -661,51 +661,61 @@ const handleAuth = async (e) => {
             /**
              * Lógica de consulta à IA (Gemini)
              */
-      const generateAIAdvice = async () => {
+    const [isTyping, setIsTyping] = React.useState(false);
+const typingIntervalRef = React.useRef(null);
+
+const generateAIAdvice = async () => {
     if (aiLoading) return;
-    
+
+    // Limpa qualquer intervalo de digitação anterior se existir
+    if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+
     setAiLoading(true);
     setShowAiModal(true);
-    setAiAdvice('Niklaus está analisando suas finanças... (Isso pode levar 30s se o servidor estiver ligando)');
+    setIsTyping(true);
+    
+    // Frase de espera amigável enquanto o servidor acorda
+    setAiAdvice('Niklaus está consultando os gráficos e preparando uma piada... 📈');
 
     try {
         const summary = `
-Resumo Financeiro:
-Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
-Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
-Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}
-Transações: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
+            Resumo Financeiro de ${profileName || 'Usuário'}:
+            Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
+            Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
+            Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}
+            Últimas Transações: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
         `;
 
         const res = await fetch("https://controlefinanceiro-naip.onrender.com/gemini", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                mensagem: summary
+                mensagem: summary,
+                nomeUsuario: profileName // Passando o nome para o Niklaus usar
             })
         });
 
-        if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`Erro no servidor: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`Erro: ${res.status}`);
 
         const data = await res.json();
+        const textoCompleto = data.resposta || "Não consegui analisar agora, tente novamente.";
 
-        if (data.resposta) {
-            setAiAdvice(data.resposta);
-        } else {
-            throw new Error("Resposta vazia da IA");
-        }
+        // EFEITO MÁQUINA DE ESCREVER
+        setAiAdvice(""); // Limpa a frase de espera
+        let i = 0;
+        typingIntervalRef.current = setInterval(() => {
+            setAiAdvice((prev) => prev + textoCompleto.charAt(i));
+            i++;
+            if (i >= textoCompleto.length) {
+                clearInterval(typingIntervalRef.current);
+                setIsTyping(false);
+            }
+        }, 15); // Velocidade da digitação (15ms por letra)
 
     } catch (err) {
-        console.error("Erro na chamada da IA:", err);
-        // Resposta de contingência caso o servidor falhe
-        setAiAdvice(
-            `Niklaus recomenda:\n\n1. Verificamos uma instabilidade na conexão, mas não pare de anotar seus gastos!\n2. Mantenha sua reserva de emergência priorizada.\n3. Evite compras parceladas esta semana.`
-        );
+        console.error("Erro na IA:", err);
+        setIsTyping(false);
+        setAiAdvice(`Niklaus recomenda:\n\n1. Servidor instável, mas foco no controle!\n2. Mantenha sua reserva de emergência.\n3. Evite compras por impulso hoje.`);
     } finally {
         setAiLoading(false);
     }

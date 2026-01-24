@@ -1578,87 +1578,124 @@ const markReplyAsViewed = async (sugId) => {
         </h3>
     </div>
 
-   ${user.email === 'davidbhmg147@gmail.com' ? html`
-    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
-        ${suggestions.length === 0 ? html`
-            <p className="text-[10px] text-slate-500 text-center uppercase py-10">Nenhuma sugestão nova.</p>
-        ` : suggestions.map(sug => html`
-            <div key=${sug.id} className="p-4 bg-slate-900/50 rounded-2xl border border-slate-800 mb-3">
-                <div className="flex justify-between mb-2">
-                    <span className="text-[8px] font-black text-violet-400 uppercase">${sug.userName || 'Usuário'}</span>
-                    <span className="text-[8px] text-slate-600">
-                        ${sug.createdAt && sug.createdAt.seconds 
-                            ? new Date(sug.createdAt.seconds * 1000).toLocaleDateString() 
-                            : 'Enviando...'}
-                    </span>
-                </div>
-                <p className="text-xs text-slate-300 mb-3">${sug.text || sug.message}</p>
-                
-                ${sug.reply ? html`
-                    <div className="mt-2 p-2 bg-violet-600/10 rounded-xl border border-violet-600/20">
-                        <p className="text-[10px] text-violet-400 font-bold">Sua resposta: ${sug.reply}</p>
+    ${user.email === 'davidbhmg147@gmail.com' ? html`
+        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+            ${suggestions.length === 0 ? html`<p className="text-[10px] text-slate-500 text-center uppercase">Nenhuma sugestão nova.</p>` : ''}
+            ${suggestions.map(sug => html`
+                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
+                    <div className="flex justify-between mb-2">
+                        <span className="text-[8px] font-black text-violet-400 uppercase">${sug.userName}</span>
+                        <span className="text-[8px] text-slate-600">${new Date(sug.createdAt?.toDate()).toLocaleDateString()}</span>
                     </div>
-                ` : html`
-                    <div className="flex gap-2">
-                        <input type="text" id=${`reply-${sug.id}`} placeholder="Responder..." className="flex-1 bg-slate-800 border-0 rounded-lg text-[10px] p-2 text-white outline-none focus:ring-1 focus:ring-violet-500" />
-                        <button onClick=${() => {
-                            const input = document.getElementById(`reply-${sug.id}`);
-                            if(input.value.trim()) {
+                    <p className="text-xs text-slate-300 mb-3">${sug.message}</p>
+                    
+                    ${sug.reply ? html`
+                        <div className="mt-2 p-2 bg-violet-600/10 rounded-xl border border-violet-600/20">
+                            <p className="text-[10px] text-violet-400 font-bold">Sua resposta: ${sug.reply}</p>
+                        </div>
+                    ` : html`
+                        <div className="flex gap-2">
+                            <input type="text" id=${`reply-${sug.id}`} placeholder="Responder..." className="flex-1 bg-slate-800 border-0 rounded-lg text-[10px] p-2 text-white outline-none" />
+                            <button onClick=${() => {
+                                const input = document.getElementById(`reply-${sug.id}`);
                                 sendReply(sug.id, input.value);
                                 input.value = '';
-                            }
-                        }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px] active:scale-90 transition-all">
-                            <i className="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-                `}
-            </div>
-        `)}
-    </div>
-` : html`
-    <div className="space-y-4">
-        <textarea 
-            value=${suggestionText}
-            onInput=${e => setSuggestionText(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px] outline-none focus:border-violet-500 transition-all" 
-            placeholder="No que podemos melhorar o app?"></textarea>
-        
-        <button 
-            disabled=${sendingSuggestion || !suggestionText.trim()}
-            onClick=${sendSuggestion} 
-            className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all disabled:opacity-50">
-            ${sendingSuggestion ? 'Enviando...' : 'Enviar Feedback'}
-        </button>
-    </div>
-`}
-
-<div className="pt-8 space-y-4">
-    <button onClick=${async () => {
-        try {
-            await updateDoc(doc(db, "users", user.id), { 
-                appName: profileName, 
-                secondaryName: secondaryName, 
-                photoURL: profilePhoto,
-                secondaryPhotoURL: secondaryPhoto,
-                soundEnabled: soundEnabled
-            });
-            alert("As configurações foram salvas com sucesso!");
-        } catch (err) {
-            alert("Erro ao sincronizar dados com o servidor.");
-        }
-    }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">
-        Sincronizar Alterações
-    </button>
-
-    <button onClick=${handleClearFinancialData} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 hover:bg-rose-500 transition-all">
-        <i className="fas fa-eraser mr-2"></i> Limpar Dados Financeiros
-    </button>
-
-    <button onClick=${handleDeleteAccount} className="w-full py-5 bg-rose-900/20 text-rose-500 border border-rose-900/50 font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all">
-        <i className="fas fa-trash-alt mr-2"></i> Excluir Minha Conta
-    </button>
-
-    <button onClick=${handleLogout} className="md:hidden w-full py-5 bg-slate-800 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all">
-        <i className="fas fa-sign-out-alt mr-2"></i> Encerrar Sessão
-    </button>
+                            }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px]"><i className="fas fa-paper-plane"></i></button>
+                        </div>
+                    `}
+                </div>
+            `)}
+        </div>
+    ` : html`
+        <div className="space-y-4">
+            <textarea 
+                value=${suggestionText}
+                onInput=${e => setSuggestionText(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px] outline-none focus:border-violet-500 transition-all" 
+                placeholder="No que podemos melhorar o app?"></textarea>
+            <button 
+                disabled=${sendingSuggestion}
+                onClick=${sendSuggestion} 
+                className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">
+                ${sendingSuggestion ? 'Enviando...' : 'Enviar Feedback'}
+            </button>
+        </div>
+    `}
 </div>
+
+            <div className="pt-4 space-y-4">
+                <button onClick=${async () => {
+                    try {
+                        await updateDoc(doc(db, "users", user.id), { 
+                            appName: profileName, 
+                            secondaryName: secondaryName, 
+                            photoURL: profilePhoto,
+                            secondaryPhotoURL: secondaryPhoto,
+                            soundEnabled: soundEnabled
+                        });
+                        alert("As configurações foram salvas com sucesso!");
+                    } catch (err) {
+                        alert("Erro ao sincronizar dados com o servidor.");
+                    }
+                }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
+
+                <button onClick=${handleClearFinancialData} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">
+                    <i className="fas fa-eraser mr-2"></i> Limpar Dados Financeiros
+                </button>
+
+                <button onClick=${handleDeleteAccount} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-600/30 active:scale-95 hover:bg-rose-500 transition-all">
+                    <i className="fas fa-trash-alt mr-2"></i> Excluir Minha Conta
+                </button>
+
+                <button onClick=${handleLogout} className="md:hidden w-full py-5 bg-slate-800 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">
+                    <i className="fas fa-sign-out-alt mr-2"></i> Encerrar Sessão
+                </button>
+            </div>
+        </div>
+    </div>
+` : ''}
+                    </main>
+                    <div className="text-center pb-24 md:pb-10 text-[8px] font-black text-slate-800 uppercase tracking-[0.4em] opacity-40 animate-in">Produzido por NIKLAUS</div>
+                    <button onClick=${() => openAddTransaction(activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions) || (activeTab === 'analytics' && viewSecondaryTransactions))} className="fixed bottom-24 right-6 md:bottom-10 md:right-10 bg-violet-600 text-white w-16 h-16 rounded-[1.8rem] shadow-2xl flex items-center justify-center z-50 border-4 border-slate-950 active:scale-90 hover:bg-violet-500 transition-all group">
+                        <i className="fas fa-plus text-xl group-hover:rotate-90 transition-transform"></i>
+                    </button>
+                    <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 flex justify-around p-4 z-[80] shadow-2xl">
+    <button onClick=${() => setActiveTab('dashboard')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'dashboard' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <div className="relative">
+            <i className="fas fa-home text-sm"></i>
+            ${activeTab !== 'dashboard' && unreadCount > 0 ? html`<span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-950 animate-pulse"></span>` : ''}
+        </div>
+        <span className="text-[7px] font-black uppercase tracking-widest">Início</span>
+    </button>
+
+    <button onClick=${() => setActiveTab('analytics')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'analytics' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <i className="fas fa-chart-pie text-sm"></i>
+        <span className="text-[7px] font-black uppercase tracking-widest">Gráfico</span>
+    </button>
+
+    <button onClick=${() => setActiveTab('secondary')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'secondary' ? 'text-emerald-400 opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <i className="fas fa-wallet text-sm"></i>
+        <span className="text-[7px] font-black uppercase tracking-widest">${secondaryName || 'Secundária'}</span>
+    </button>
+
+    <button onClick=${() => navigateToExtrato(false)} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'transactions' && !viewSecondaryTransactions ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <i className="fas fa-list text-sm"></i>
+        <span className="text-[7px] font-black uppercase tracking-widest">Extrato</span>
+    </button>
+
+    <button onClick=${() => setActiveTab('settings')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'settings' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
+        <div className="relative">
+            <i className="fas fa-user-cog text-sm"></i>
+            ${unreadCount > 0 ? html`<span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-950 animate-pulse"></span>` : ''}
+        </div>
+        <span className="text-[7px] font-black uppercase tracking-widest">Perfil</span>
+    </button>
+</nav>
+                </div>`;
+        };
+
+        // Renderização Final no DOM
+        ReactDOM.render(html`<${App} />`, document.getElementById('root'));
+    </script>
+</body>
+</html>

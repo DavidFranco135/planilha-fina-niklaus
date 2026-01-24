@@ -1468,90 +1468,139 @@ Transações: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ $
                             </div>
                         ` : ''}
 
-                        ${activeTab === 'settings' ? html`
-                            <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
-                                <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
-                                <div className="space-y-6">
-                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
-                                        <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
-                                            <div className="relative cursor-pointer group" onClick=${() => fileInputPrincipalRef.current.click()}>
-                                                <${Avatar} src=${profilePhoto} size="lg" />
-                                                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs"><i className="fas fa-camera"></i></div>
-                                                <input type="file" ref=${fileInputPrincipalRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'principal')} />
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Principal</h4>
-                                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Titular</p>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
-                                            <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-violet-500 transition-all" value=${profileName} onInput=${e => setProfileName(e.target.value)} />
-                                        </div>
-                                    </div>
-                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
-                                        <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
-                                            <div className="relative cursor-pointer group" onClick=${() => fileInputSecondaryRef.current.click()}>
-                                                <${Avatar} src=${secondaryPhoto} size="lg" />
-                                                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs"><i className="fas fa-camera"></i></div>
-                                                <input type="file" ref=${fileInputSecondaryRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'secondary')} />
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Secundária</h4>
-                                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Dependente / Investimentos</p>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
-                                            <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-emerald-500 transition-all" value=${secondaryName} onInput=${e => setSecondaryName(e.target.value)} />
-                                        </div>
-                                    </div>
-                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
-                                        <h4 className="text-sm font-black text-white uppercase tracking-wider">Preferências</h4>
-                                        <div className="flex items-center justify-between p-4 bg-slate-800/40 rounded-2xl border border-slate-700">
-                                            <div className="flex items-center gap-3">
-                                                <div className=${`w-10 h-10 rounded-xl flex items-center justify-center ${soundEnabled ? 'text-violet-400 bg-violet-400/10' : 'text-slate-500 bg-slate-700/30'}`}>
-                                                    <i className=${`fas ${soundEnabled ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-slate-200">Efeitos Sonoros</p>
-                                                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Sino agudo ao salvar</p>
-                                                </div>
-                                            </div>
-                                            <label className="switch">
-                                                <input type="checkbox" checked=${soundEnabled} onChange=${e => setSoundEnabled(e.target.checked)} />
-                                                <span className="slider"></span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div className="pt-4 space-y-4">
-                                        <button onClick=${async () => {
-                                            try {
-                                                await updateDoc(doc(db, "users", user.id), { 
-                                                    appName: profileName, 
-                                                    secondaryName: secondaryName, 
-                                                    photoURL: profilePhoto,
-                                                    secondaryPhotoURL: secondaryPhoto,
-                                                    soundEnabled: soundEnabled
-                                                });
-                                                alert("As configurações foram salvas com sucesso!");
-                                            } catch (err) {
-                                                alert("Erro ao sincronizar dados com o servidor.");
-                                            }
-                                        }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
-                                        <button onClick=${handleClearFinancialData} className="w-full py-4 bg-slate-800/50 text-slate-400 font-black rounded-2xl text-[9px] uppercase tracking-widest border border-slate-700 active:bg-slate-700 transition-all">
-                                            <i className="fas fa-eraser mr-2"></i> Limpar Dados Financeiros
-                                        </button>
-                                        <button onClick=${handleDeleteAccount} className="w-full py-4 bg-rose-500/10 text-rose-500 font-black rounded-2xl text-[9px] uppercase tracking-widest border border-rose-500/20 active:bg-rose-500/20 transition-all">
-                                            <i className="fas fa-trash-alt mr-2"></i> Excluir Minha Conta
-                                        </button>
-                                        <button onClick=${handleLogout} className="md:hidden w-full py-4 bg-slate-800/30 text-rose-500 font-black rounded-2xl text-[9px] uppercase tracking-widest border border-rose-500/20 active:bg-rose-500/10">
-                                            <i className="fas fa-sign-out-alt mr-2"></i> Encerrar Sessão
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
+                       ${activeTab === 'settings' ? html`
+    <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
+        <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
+        
+        <div className="space-y-6">
+            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
+                <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
+                    <div className="relative cursor-pointer group" onClick=${() => fileInputPrincipalRef.current.click()}>
+                        <${Avatar} src=${profilePhoto} size="lg" />
+                        <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+                            <i className="fas fa-camera"></i>
+                        </div>
+                        <input type="file" ref=${fileInputPrincipalRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'principal')} />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Principal</h4>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Titular</p>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
+                    <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-violet-500 transition-all" value=${profileName} onInput=${e => setProfileName(e.target.value)} />
+                </div>
+            </div>
+
+            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
+                <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
+                    <div className="relative cursor-pointer group" onClick=${() => fileInputSecondaryRef.current.click()}>
+                        <${Avatar} src=${secondaryPhoto} size="lg" />
+                        <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+                            <i className="fas fa-camera"></i>
+                        </div>
+                        <input type="file" ref=${fileInputSecondaryRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'secondary')} />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Secundária</h4>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Dependente / Investimentos</p>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
+                    <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-emerald-500 transition-all" value=${secondaryName} onInput=${e => setSecondaryName(e.target.value)} />
+                </div>
+            </div>
+
+            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
+                <h4 className="text-sm font-black text-white uppercase tracking-wider">Preferências</h4>
+                <div className="flex items-center justify-between p-4 bg-slate-800/40 rounded-2xl border border-slate-700">
+                    <div className="flex items-center gap-3">
+                        <div className=${`w-10 h-10 rounded-xl flex items-center justify-center ${soundEnabled ? 'text-violet-400 bg-violet-400/10' : 'text-slate-500 bg-slate-700/30'}`}>
+                            <i className=${`fas ${soundEnabled ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-slate-200">Efeitos Sonoros</p>
+                            <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Sino ao salvar</p>
+                        </div>
+                    </div>
+                    <label className="switch">
+                        <input type="checkbox" checked=${soundEnabled} onChange=${e => setSoundEnabled(e.target.checked)} />
+                        <span className="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-8 rounded-[2.5rem] shadow-2xl text-white relative overflow-hidden group">
+                <div className="relative z-10">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                            <i className="fas fa-gift"></i>
+                        </div>
+                        <div>
+                            <h4 className="font-black uppercase text-sm tracking-tighter">Convidar Amigo</h4>
+                            <p className="text-[10px] opacity-80 font-bold">Indique o app para um amigo!</p>
+                        </div>
+                    </div>
+                    <button onClick=${() => {
+                        if (navigator.share) {
+                            navigator.share({ title: 'App Finanças', text: 'Estou usando este app para gerenciar minhas contas!', url: window.location.href });
+                        } else {
+                            alert('Link de convite copiado!');
+                        }
+                    }} className="w-full bg-white text-violet-600 py-4 rounded-2xl text-[10px] font-black uppercase hover:bg-slate-100 transition-all shadow-lg">
+                        Enviar Convite
+                    </button>
+                </div>
+                <i className="fas fa-share-alt absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12 transition-transform duration-500 group-hover:rotate-0"></i>
+            </div>
+
+            <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
+                <div className="flex items-center gap-3 mb-6">
+                    <i className="fas fa-comment-dots text-violet-500"></i>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest">Sugestões para o Adm</h3>
+                </div>
+                <textarea 
+                    id="suggestionInput"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px] outline-none focus:border-violet-500 transition-all mb-4" 
+                    placeholder="No que podemos melhorar o app?"></textarea>
+                <button onClick=${() => alert('Sugestão enviada!')} className="w-full bg-violet-600/10 hover:bg-violet-600 text-violet-400 hover:text-white py-4 rounded-2xl text-[10px] font-black uppercase transition-all border border-violet-500/20">
+                    Enviar Feedback
+                </button>
+            </div>
+
+            <div className="pt-4 space-y-4">
+                <button onClick=${async () => {
+                    try {
+                        await updateDoc(doc(db, "users", user.id), { 
+                            appName: profileName, 
+                            secondaryName: secondaryName, 
+                            photoURL: profilePhoto,
+                            secondaryPhotoURL: secondaryPhoto,
+                            soundEnabled: soundEnabled
+                        });
+                        alert("As configurações foram salvas com sucesso!");
+                    } catch (err) {
+                        alert("Erro ao sincronizar dados com o servidor.");
+                    }
+                }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
+
+                <button onClick=${handleClearFinancialData} className="w-full py-4 bg-slate-800/50 text-slate-400 font-black rounded-2xl text-[9px] uppercase tracking-widest border border-slate-700 active:bg-slate-700 transition-all">
+                    <i className="fas fa-eraser mr-2"></i> Limpar Dados Financeiros
+                </button>
+
+                <button onClick=${handleDeleteAccount} className="w-full py-4 bg-rose-500/10 text-rose-500 font-black rounded-2xl text-[9px] uppercase tracking-widest border border-rose-500/20 active:bg-rose-500/20 transition-all">
+                    <i className="fas fa-trash-alt mr-2"></i> Excluir Minha Conta
+                </button>
+
+                <button onClick=${handleLogout} className="md:hidden w-full py-4 bg-slate-800/30 text-rose-500 font-black rounded-2xl text-[9px] uppercase tracking-widest border border-rose-500/20 active:bg-rose-500/10">
+                    <i className="fas fa-sign-out-alt mr-2"></i> Encerrar Sessão
+                </button>
+            </div>
+        </div>
+    </div>
+` : ''}
                     </main>
                     <div className="text-center pb-24 md:pb-10 text-[8px] font-black text-slate-800 uppercase tracking-[0.4em] opacity-40 animate-in">Produzido por NIKLAUS</div>
                     <button onClick=${() => openAddTransaction(activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions) || (activeTab === 'analytics' && viewSecondaryTransactions))} className="fixed bottom-24 right-6 md:bottom-10 md:right-10 bg-violet-600 text-white w-16 h-16 rounded-[1.8rem] shadow-2xl flex items-center justify-center z-50 border-4 border-slate-950 active:scale-90 hover:bg-violet-500 transition-all group">

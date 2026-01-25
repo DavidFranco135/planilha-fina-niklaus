@@ -782,51 +782,57 @@ const sendSuggestion = async () => {
     console.error("Erro ao enviar sugestão:", err);
     alert("Erro ao enviar a mensagem. Tente novamente.");
   } finally {
-    setSendingSuggestion(f
+    setSendingSuggestion(false);   // ✅ FECHADO CORRETAMENTE
+  }
+};
 
 
 // Função exclusiva para o Niklaus responder
 const sendReply = async (sugId, replyText) => {
-    if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
-    try {
-        await updateDoc(doc(db, "suggestions", sugId), {
-            reply: replyText,
-            repliedAt: serverTimestamp(),
-            replyViewed: false
-        });
-        alert("Resposta enviada com sucesso!");
-    } catch (e) {
-        console.error("Erro ao responder:", e);
-    }
+  if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
+
+  try {
+    await updateDoc(doc(db, "suggestions", sugId), {
+      reply: replyText,
+      repliedAt: serverTimestamp(),
+      replyViewed: false
+    });
+    alert("Resposta enviada com sucesso!");
+  } catch (e) {
+    console.error("Erro ao responder:", e);
+  }
 };
 
 const markReplyAsViewed = async (sugId) => {
-    try {
-        await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
-    } catch (e) { console.error(e); }
+  try {
+    await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
+  } catch (e) { 
+    console.error(e); 
+  }
 };
 
-            /**
-             * Compartilhamento do app (Web Share API)
-             */
-            const handleAppShare = async () => {
-                const shareData = {
-                    title: 'GestorFinanceiro - Controle Financeiro Premium',
-                    text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link e garanta sua versão Premium com todas as funcionalidades liberadas:',
-                    url: window.location.href
-                };
+/**
+ * Compartilhamento do app (Web Share API)
+ */
+const handleAppShare = async () => {
+  const shareData = {
+    title: 'GestorFinanceiro - Controle Financeiro Premium',
+    text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link e garanta sua versão Premium com todas as funcionalidades liberadas:',
+    url: window.location.href
+  };
 
-                try {
-                    if (navigator.share) {
-                        await navigator.share(shareData);
-                    } else {
-                        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-                        alert("Link de convite e informações de acesso copiados para a área de transferência!");
-                    }
-                } catch (err) {
-                    console.log('Error sharing:', err);
-                }
-            };
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+    } else {
+      await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+      alert("Link de convite e informações de acesso copiados para a área de transferência!");
+    }
+  } catch (err) {
+    console.log('Error sharing:', err);
+  }
+};
+
 
             // Memoized: Transações filtradas para exibição atual
             const currentTransactions = useMemo(() => {

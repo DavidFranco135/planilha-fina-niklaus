@@ -750,27 +750,26 @@ const generateAIAdvice = async () => {
 
 // Função para o Usuário enviar
 const sendSuggestion = async () => {
-    if (!suggestionText.trim()) return;
-    setSendingSuggestion(true);
-    try {
-        await addDoc(collection(db, "suggestions"), {
-            userId: user.id,
-            userName: profileName || 'Usuário', // Importante para você saber quem mandou
-            userEmail: user.email,
-            message: suggestionText,
-            createdAt: serverTimestamp(),
-            reply: null,
-            repliedAt: null,
-            replyViewed: false
-        });
-        setSuggestionText('');
-        alert("Obrigado! Sua sugestão foi enviada com sucesso.");
-    } catch (e) { 
-        alert("Erro ao enviar sugestão."); 
-    } finally { 
-        setSendingSuggestion(false); 
-    }
+  if (!suggestionText.trim()) return;
+
+  setSendingSuggestion(true);
+
+  try {
+    await addDoc(collection(db, "suggestions"), {
+      userId: user.id,
+      userName: user.appName || user.email,
+      message: suggestionText.trim(),
+      createdAt: serverTimestamp()
+    });
+
+    setSuggestionText('');
+  } catch (e) {
+    alert("Erro ao enviar sugestão");
+  }
+
+  setSendingSuggestion(false);
 };
+
 
 // Função exclusiva para o Niklaus responder
 const sendReply = async (sugId, replyText) => {

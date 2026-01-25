@@ -333,6 +333,8 @@
             const startDataSync = (sid) => {
   setLoading(true);
 
+  let unsubSugg = () => {};
+
   const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
     if (!s.exists()) return handleLogout();
 
@@ -347,7 +349,8 @@
 
     setUser(userData);
 
-    let unsubSugg = () => {};
+    // 👉 cancela listener antigo antes de criar outro
+    unsubSugg();
 
     if (isAdmin) {
       const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
@@ -357,18 +360,28 @@
     } else {
       const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
       unsubSugg = onSnapshot(qsUser, (snap) => {
-        setUserSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setUserSuggestions(list);
+        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
+        setUnreadCount(unread);
       });
     }
-
-    return () => unsubSugg();
   });
 
   const q = query(collection(db, "transactions"), where("userId", "==", sid));
-  const unsubTx = onSnapshot(q, () => setLoading(false));
+  const unsubTx = onSnapshot(q, (s) => {
+    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    setLoading(false);
+  });
 
-  return () => { unsubUser(); unsubTx(); };
+  return () => {
+    unsubUser();
+    unsubTx();
+    unsubSugg();
+  };
 };
+
 
 
             // Efeito para checar persistência de login ao carregar

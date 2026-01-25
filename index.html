@@ -315,59 +315,74 @@
             /**
              * Inicia a sincronização de dados em tempo real com o Firestore
              */
-            const startDataSync = (sid) => {
-                setLoading(true);
-                
-                // Monitoramento de dados do usuário
-                const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-                    if (s.exists()) {
-                        const userData = { id: s.id, ...s.data() };
-                        // Bloqueio de segurança para usuários não pagos (exceto adm)
-                        if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
-                             alert("Acesso Bloqueado.");
-                             handleLogout();
-                             return;
-                        }
-                        setUser(userData);
-                        setProfileName(userData.appName || 'Meu Perfil');
-                        setSecondaryName(userData.secondaryName || 'Conta 2');
-                        setProfilePhoto(userData.photoURL || '');
-                        setSecondaryPhoto(userData.secondaryPhotoURL || '');
-                        setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
-                    } else handleLogout();
-                });
+            // ... dentro do seu componente App ...
 
-                // Monitoramento das transações do usuário
-                const q = query(collection(db, "transactions"), where("userId", "==", sid));
-                const unsubTx = onSnapshot(q, (s) => {
-                    const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
-                    setTransactions(docs.sort((a, b) => {
-                        const dateA = a.createdAt?.seconds || 0;
-                        const dateB = b.createdAt?.seconds || 0;
-                        return dateB - dateA;
-                    }));
-                    setLoading(false);
-                });
+/**
+ * Inicia a sincronização de dados em tempo real com o Firestore
+ */
+const startDataSync = (sid) => {
+    setLoading(true);
+    
+    // Monitoramento de dados do usuário
+    const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+        if (s.exists()) {
+            const userData = { id: s.id, ...s.data() };
+            // Bloqueio de segurança para usuários não pagos
+            // Ajustado para aceitar tanto o ID 'niklaus' quanto o seu e-mail administrativo
+            const isNiklaus = userData.email.toLowerCase() === 'davidbhmg147@gmail.com' || userData.id === 'niklaus';
+            
+            if (!isNiklaus && userData.status !== 'paid') {
+                 alert("Acesso Bloqueado.");
+                 handleLogout();
+                 return;
+            }
+            setUser(userData);
+            setProfileName(userData.appName || 'Meu Perfil');
+            setSecondaryName(userData.secondaryName || 'Conta 2');
+            setProfilePhoto(userData.photoURL || '');
+            setSecondaryPhoto(userData.secondaryPhotoURL || '');
+            setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
+        } else handleLogout();
+    });
 
-                // Monitoramento de sugestões (feedback do admin)
-                let unsubSugg = () => {};
-                if (sid === 'niklaus') {
-                    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-                    unsubSugg = onSnapshot(qs, (s) => {
-                        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
-                    });
-                } else {
-                    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-                    unsubSugg = onSnapshot(qsUser, (s) => {
-                        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                        setUserSuggestions(suggestions);
-                        const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
-                        setUnreadCount(unread);
-                    });
-                }
+    // Monitoramento das transações
+    const q = query(collection(db, "transactions"), where("userId", "==", sid));
+    const unsubTx = onSnapshot(q, (s) => {
+        const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
+        setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+        setLoading(false);
+    });
 
-                return () => { unsubUser(); unsubTx(); unsubSugg(); };
-            };
+    // --- MONITORAMENTO DE SUGESTÕES (Ajustado) ---
+    let unsubSugg = () => {};
+    
+    // Verificamos se você é o Niklaus (Admin) pelo e-mail ou pelo SID
+    if (sid === 'niklaus' || (user && user.email === 'davidbhmg147@gmail.com')) {
+        // Para o ADMIN: Ver todas as sugestões e contar as 'unread'
+        const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+        unsubSugg = onSnapshot(qs, (s) => {
+            const list = s.docs.map(d => ({ id: d.id, ...d.data() }));
+            setAdminSuggestions(list);
+            
+            // CONTAGEM DE NOTIFICAÇÕES PARA O ADMIN (Mensagens que você ainda não respondeu)
+            const unreadMessages = list.filter(sug => !sug.reply || sug.status === 'unread').length;
+            setUnreadCount(unreadMessages);
+        });
+    } else {
+        // Para o USUÁRIO COMUM: Ver apenas as suas e contar respostas novas
+        const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+        unsubSugg = onSnapshot(qsUser, (s) => {
+            const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
+            setUserSuggestions(suggestions);
+            
+            // Notificação para o usuário: Niklaus respondeu e ele ainda não viu
+            const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
+            setUnreadCount(unread);
+        });
+    }
+
+    return () => { unsubUser(); unsubTx(); unsubSugg(); };
+};
 
             // Efeito para checar persistência de login ao carregar
             useEffect(() => {
@@ -746,21 +761,32 @@ const generateAIAdvice = async () => {
 const sendSuggestion = async () => {
     if (!suggestionText.trim()) return;
     setSendingSuggestion(true);
+    
     try {
+        // Adicionamos o campo 'status' para controlar as notificações no seu painel
         await addDoc(collection(db, "suggestions"), {
             userId: user.id,
-            userName: profileName || 'Usuário', // Importante para você saber quem mandou
+            userName: profileName || 'Usuário',
             userEmail: user.email,
             message: suggestionText,
-            createdAt: serverTimestamp(),
+            createdAt: serverTimestamp(), // Certifique-se de que serverTimestamp foi importado do firestore
+            status: "unread",  // <--- ESSENCIAL: Isso fará a bolinha de notificação aparecer para você
             reply: null,
             repliedAt: null,
             replyViewed: false
         });
+
         setSuggestionText('');
-        alert("Obrigado! Sua sugestão foi enviada com sucesso.");
+        
+        // Feedback visual mais moderno
+        if (typeof toast !== 'undefined') {
+            toast.success("Sugestão enviada! Niklaus será notificado.");
+        } else {
+            alert("Obrigado! Sua sugestão foi enviada e o administrador foi notificado.");
+        }
     } catch (e) { 
-        alert("Erro ao enviar sugestão."); 
+        console.error("Erro ao enviar:", e);
+        alert("Erro ao enviar sugestão. Verifique sua conexão."); 
     } finally { 
         setSendingSuggestion(false); 
     }

@@ -364,26 +364,35 @@ const startDataSync = (sid) => {
              */
            
 
+// --- FECHE QUALQUER FUNÇÃO ANTERIOR AQUI ---
+
 const handleAuth = async (e) => {
     if (e) e.preventDefault();
+    
+    // Validação básica
     if (!email || (!isRecovering && !pass)) {
         alert("Preencha os campos corretamente.");
         return;
     }
 
     setAuthLoading(true);
+    
     try {
         const emailTrim = email.toLowerCase().trim();
+        // Gera o ID seguro para o Firestore
         const safeId = emailTrim.replace(/[^a-z0-9]/g, '_');
         const userRef = doc(db, "users", safeId);
         const userSnap = await getDoc(userRef);
 
+        // MODO: RECUPERAÇÃO
         if (isRecovering) {
             auth.languageCode = 'pt';
             await sendPasswordResetEmail(auth, emailTrim);
             alert("E-mail de redefinição enviado!");
             setIsRecovering(false);
-        } else if (isRegistering) {
+        } 
+        // MODO: CADASTRO
+        else if (isRegistering) {
             if (userSnap.exists()) {
                 alert("Este e-mail já está cadastrado.");
             } else {
@@ -400,27 +409,40 @@ const handleAuth = async (e) => {
                 alert("Conta criada com sucesso!");
                 setIsRegistering(false);
             }
-        } else {
+        } 
+        // MODO: LOGIN
+        else {
             await signInWithEmailAndPassword(auth, emailTrim, pass);
+            
             if (userSnap.exists()) {
                 const userData = userSnap.data();
+                // Verifica se é admin (David ou campo isAdmin)
                 const isNiklaus = emailTrim === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
                 
                 if (userData.paid || userData.status === 'paid' || isNiklaus) {
                     const storage = keepConnected ? localStorage : sessionStorage;
                     storage.setItem('belaju_sid', safeId);
-                    startDataSync(safeId);
+                    
+                    // Inicia a sincronização se a função existir
+                    if (typeof startDataSync === 'function') {
+                        startDataSync(safeId);
+                    }
                 } else {
                     alert("Acesso restrito. Efetue o pagamento.");
                 }
+            } else {
+                alert("Usuário não encontrado no banco de dados.");
             }
         }
     } catch (err) {
+        console.error("Erro na Auth:", err);
         alert("Erro: " + err.message);
     } finally {
         setAuthLoading(false);
     }
 };
+
+// --- NÃO DEVE HAVER UM RETURN SOLTO AQUI ---
             /**
              * Limpa dados de sessão ao sair
              */

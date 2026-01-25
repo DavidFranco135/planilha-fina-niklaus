@@ -401,12 +401,13 @@ const startDataSync = (sid) => {
         setLoading(false);
     });
 
+// ... restante do código anterior
     return () => { 
         unsubUser(); 
         unsubTx(); 
-        if (window.unsubSugg) window.unsubSugg(); 
+        if (window.activeUnsubSugg) window.activeUnsubSugg(); 
     };
-};
+}; // <--- CERTIFIQUE-SE DE QUE ESTA CHAVE EXISTE PARA FECHAR A FUNÇÃO
 
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)

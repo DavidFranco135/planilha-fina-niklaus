@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import Groq from "groq-sdk";
-// IMPORTANTE: Importar o arquivo do webhook
-import kiwifyWebhook from './kiwify-webhook.js'; 
+import kiwifyWebhook from './kiwify-webhook.js';
+import admin from "firebase-admin";
 
 dotenv.config();
 
@@ -11,15 +11,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- Inicializa Firebase Admin ---
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+  });
+}
+
+const db = admin.firestore();
+
+// --- Inicializa Groq SDK ---
 const groq = new Groq({
   apiKey: process.env.GROQ_KEY,
 });
 
-// --- ROTA DA IA NIKLAUS ---
-// server.js ou app.js
+// ========================
+// ROTA AI NIKLAUS
+// ========================
 const temasPiadas = ["investimentos", "bancos", "boletos", "cartão de crédito", "cripto", "inflação", "aposentadoria"];
-
-
 
 app.post("/gemini", async (req, res) => {
   try {
@@ -36,22 +45,68 @@ app.post("/gemini", async (req, res) => {
         },
         { role: "user", content: mensagem }
       ],
-      // MODELO INSTANTÂNEO PARA VELOCIDADE MÁXIMA
       model: "llama-3.1-8b-instant", 
-      temperature: 0.9, // Mais criatividade nas piadas
+      temperature: 0.9,
     });
 
     res.json({ resposta: completion.choices[0]?.message?.content });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ erro: "Niklaus deu uma saidinha." });
   }
 });
 
-// --- ROTA DO WEBHOOK KIWIFY (A que estava faltando) ---
-// No painel da Kiwify, a URL deve ser: https://controlefinanceiro-naip.onrender.com/webhook-kiwify
+// ========================
+// WEBHOOK KIWIFY
+// ========================
 app.post("/webhook-kiwify", kiwifyWebhook);
 
+// ========================
+// ROTA PARA ENVIAR MENSAGEM DO ADMIN
+// ========================
+app.post("/enviar-mensagem", async (req, res) => {
+  try {
+    const { userId, mensagem } = req.body;
+
+    if (!userId || !mensagem) {
+      return res.status(400).json({ erro: "Faltando userId ou mensagem" });
+    }
+
+    await db.collection("mensagens").add({
+      de: "admin",
+      para: userId,
+      mensagem,
+      data: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ sucesso: true, msg: "Mensagem enviada ao usuário!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Erro ao enviar mensagem" });
+  }
+});
+
+// ========================
+// ROTA PARA LISTAR USUÁRIOS (PAINEL ADMIN)
+// ========================
+app.get("/usuarios", async (req, res) => {
+  try {
+    const snapshot = await db.collection("users").get();
+    const usuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(usuarios);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Erro ao listar usuários" });
+  }
+});
+
+// ========================
+// ROTA TESTE
+// ========================
 app.get("/", (req, res) => res.send("Servidor do Niklaus está Online! 🚀"));
 
+// ========================
+// INICIA SERVIDOR
+// ========================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));

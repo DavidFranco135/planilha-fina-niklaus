@@ -1529,56 +1529,64 @@ const handleAppShare = async () => {
                         ` : ''}
 
                         ${activeTab === 'transactions' ? html`
-                            <div className="space-y-4 animate-in">
-                                <div className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 space-y-5 shadow-sm">
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex p-1 bg-slate-950 rounded-2xl gap-1 w-full no-scrollbar overflow-x-auto border border-slate-800">
-                                            <button onClick=${() => setTypeFilter('ALL')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'ALL' ? 'bg-slate-800 text-violet-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>Tudo</button>
-                                            <button onClick=${() => setTypeFilter('INCOME')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10 shadow-sm' : 'text-slate-500 hover:text-emerald-400'}`}>Entradas</button>
-                                            <button onClick=${() => setTypeFilter('EXPENSE')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'EXPENSE' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/10 shadow-sm' : 'text-slate-500 hover:text-rose-400'}`}>Saídas</button>
-                                        </div>
-                                        <div className="flex p-1 bg-slate-950 rounded-2xl gap-1 w-full no-scrollbar overflow-x-auto border border-slate-800">
-                                            ${['ALL', 'PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'].map(m => html`
-                                                <button key=${m} onClick=${() => setMethodFilter(m)} className=${`flex-none px-5 py-3 rounded-xl text-[8px] font-black uppercase transition-all whitespace-nowrap ${methodFilter === m ? 'bg-slate-800 text-violet-400 border border-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>
-                                                    ${m === 'ALL' ? 'Canais (Todos)' : m}
-                                                </button>
-                                            `)}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                    ${currentTransactions.length === 0 ? html`<div className="col-span-full py-20 text-center text-slate-500 font-bold uppercase text-xs tracking-[0.2em]">Sem dados para este filtro</div>` : currentTransactions.map(t => html`
-                                        <div key=${t.id} className="bg-slate-900 p-5 rounded-3xl border border-slate-800 flex items-center justify-between gap-4 hover:border-slate-700 transition-all group" onClick=${() => openEdit(t)}>
-                                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                                <div className=${`w-12 h-12 rounded-2xl flex items-center justify-center text-sm flex-none shadow-sm ${t.type === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                                                    <i className=${t.type === 'INCOME' ? 'fas fa-plus' : 'fas fa-minus'}></i>
-                                                </div>
-                                                <div className="truncate">
-                                                    <p className="text-[12px] font-black text-slate-100 truncate">
-                                                        ${t.description} 
-                                                        ${t.totalInstallments ? html`
-                                                            <span className="text-violet-400/90 ml-1 font-medium">
-                                                                (${t.currentInstallment}/${t.totalInstallments} • R$ ${(t.totalValue || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})
-                                                            </span>
-                                                        ` : ''}
-                                                    </p>
-                                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">${new Date(t.date).toLocaleDateString('pt-BR')} • ${t.method}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-right">
-                                                    <p className=${`font-black text-xs transition-value whitespace-nowrap ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'} ${showValues ? '' : 'blur-value'}`}>
-                                                         R$ ${(t.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                    </p>
-                                                    <p className="text-[8px] font-black uppercase text-slate-600">${t.isPaid ? 'Pago' : 'Pendente'}</p>
-                                                </div>
-                                                <button onClick=${(e) => handleDeleteTransaction(e, t.id)} className="p-2.5 text-slate-700 hover:text-rose-500 transition-colors bg-slate-800/50 rounded-xl group-hover:bg-rose-500/10"><i className="fas fa-trash-alt text-xs"></i></button>
-                                            </div>
-                                        </div>
-                                    `)}
-                                </div>
-                            </div>
-                        ` : ''}
+    <div className="space-y-4 animate-in">
+        <div className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 space-y-5 shadow-sm">
+            <div className="flex flex-col gap-4">
+                <div className="flex p-1 bg-slate-950 rounded-2xl gap-1 w-full no-scrollbar overflow-x-auto border border-slate-800">
+                    <button onClick=${() => setTypeFilter('ALL')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'ALL' ? 'bg-slate-800 text-violet-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>Tudo</button>
+                    <button onClick=${() => setTypeFilter('INCOME')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10 shadow-sm' : 'text-slate-500 hover:text-emerald-400'}`}>Entradas</button>
+                    <button onClick=${() => setTypeFilter('EXPENSE')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'EXPENSE' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/10 shadow-sm' : 'text-slate-500 hover:text-rose-400'}`}>Saídas</button>
+                </div>
+                <div className="flex p-1 bg-slate-950 rounded-2xl gap-1 w-full no-scrollbar overflow-x-auto border border-slate-800">
+                    ${['ALL', 'PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'].map(m => html`
+                        <button key=${m} onClick=${() => setMethodFilter(m)} className=${`flex-none px-5 py-3 rounded-xl text-[8px] font-black uppercase transition-all whitespace-nowrap ${methodFilter === m ? 'bg-slate-800 text-violet-400 border border-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>
+                            ${m === 'ALL' ? 'Canais (Todos)' : m}
+                        </button>
+                    `)}
+                </div>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            ${currentTransactions.length === 0 ? html`
+                <div className="col-span-full py-20 text-center text-slate-500 font-bold uppercase text-xs tracking-[0.2em]">Sem dados para este filtro</div>
+            ` : currentTransactions.map(t => html`
+                <div key=${t.id} className="bg-slate-900 p-5 rounded-3xl border border-slate-800 flex items-center justify-between gap-4 hover:border-slate-700 transition-all group" onClick=${() => openEdit(t)}>
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className=${`w-12 h-12 rounded-2xl flex items-center justify-center text-sm flex-none shadow-sm ${t.type === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                            <i className=${t.type === 'INCOME' ? 'fas fa-plus' : 'fas fa-minus'}></i>
+                        </div>
+                        <div className="truncate">
+                            <p className="text-[12px] font-black text-slate-100 truncate">
+                                ${t.description} 
+                                ${t.totalInstallments && t.totalInstallments > 1 ? html`
+                                    <span className="text-violet-400/90 ml-1 font-medium">
+                                        (${t.currentInstallment}/${t.totalInstallments})
+                                    </span>
+                                ` : ''}
+                            </p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">${new Date(t.date).toLocaleDateString('pt-BR')} • ${t.method}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                            <p className=${`font-black text-xs transition-value whitespace-nowrap ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'} ${showValues ? '' : 'blur-value'}`}>
+                                 R$ ${(t.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                            <p className="text-[8px] font-black uppercase text-slate-600">${t.isPaid ? 'Pago' : 'Pendente'}</p>
+                        </div>
+                        <button onClick=${(e) => { 
+                            e.stopPropagation(); // IMPORTANTE: Impede de abrir a edição ao excluir
+                            handleDeleteTransaction(t.id); 
+                        }} className="p-2.5 text-slate-700 hover:text-rose-500 transition-colors bg-slate-800/50 rounded-xl group-hover:bg-rose-500/10">
+                            <i className="fas fa-trash-alt text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `)}
+        </div>
+    </div>
+` : ''}
 
                        ${activeTab === 'settings' ? html`
     <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">

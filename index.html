@@ -300,58 +300,110 @@
  * Inicia a sincronização de dados em tempo real com o Firestore
  */
 const startDataSync = (sid) => {
-    setLoading(true);
-    
-    const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-        if (s.exists()) {
-            const userData = { id: s.id, ...s.data() };
-            
-            // Verificação Unificada de Admin
-            const isNiklaus = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com' || userData.isAdmin === "true" || userData.id === 'niklaus';
-            
-            if (!isNiklaus && userData.status !== 'paid') {
-                 alert("Acesso Bloqueado. Efetue o pagamento.");
-                 handleLogout();
-                 return;
-            }
+                setLoading(true);
+                
+                const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+                    if (s.exists()) {
+                        const userData = { id: s.id, ...s.data() };
+                        
+                        // Verificação Unificada de Admin
+                        const isNiklaus = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com' || userData.isAdmin === "true" || userData.id === 'niklaus';
+                        
+                        if (!isNiklaus && userData.status !== 'paid') {
+                             alert("Acesso Bloqueado. Efetue o pagamento.");
+                             handleLogout();
+                             return;
+                        }
 
-            setUser(userData);
-            setProfileName(userData.appName || 'Meu Perfil');
-            setSecondaryName(userData.secondaryName || 'Conta 2');
-            setProfilePhoto(userData.photoURL || '');
-            setSecondaryPhoto(userData.secondaryPhotoURL || '');
-            setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
+                        setUser(userData);
+                        setProfileName(userData.appName || 'Meu Perfil');
+                        setSecondaryName(userData.secondaryName || 'Conta 2');
+                        setProfilePhoto(userData.photoURL || '');
+                        setSecondaryPhoto(userData.secondaryPhotoURL || '');
+                        setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
 
-            // Monitoramento de Sugestões
-            const qs = isNiklaus 
-                ? query(collection(db, "suggestions"), orderBy("createdAt", "desc"))
-                : query(collection(db, "suggestions"), where("userId", "==", sid));
+                        // Monitoramento de Sugestões
+                        const qs = isNiklaus 
+                            ? query(collection(db, "suggestions"), orderBy("createdAt", "desc"))
+                            : query(collection(db, "suggestions"), where("userId", "==", sid));
 
-            const unsubSugg = onSnapshot(qs, (snap) => {
-                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                setAdminSuggestions(list); 
-                setUserSuggestions(list); 
-                if (typeof setSuggestions === 'function') setSuggestions(list); 
+                        const unsubSugg = onSnapshot(qs, (snap) => {
+                            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                            setAdminSuggestions(list); 
+                            setUserSuggestions(list); 
 
-                setUnreadCount(isNiklaus 
-                    ? list.filter(sug => !sug.reply).length 
-                    : list.filter(sug => sug.reply && !sug.replyViewed).length
-                );
-            });
-            window.activeUnsubSugg = unsubSugg;
-        } else {
-            handleLogout();
-        }
-    });
+                            setUnreadCount(isNiklaus 
+                                ? list.filter(sug => sug.status === "unread").length 
+                                : list.filter(sug => sug.reply && !sug.replyViewed).length
+                            );
+                        });
+                        window.activeUnsubSugg = unsubSugg;
+                    } else {
+                        handleLogout();
+                    }
+                });
 
-    const unsubTx = onSnapshot(query(collection(db, "transactions"), where("userId", "==", sid)), (s) => {
-        const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
-        setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        setLoading(false); 
-    }, (error) => {
-        console.error("Erro:", error);
-        setLoading(false);
-    });
+                const unsubTx = onSnapshot(query(collection(db, "transactions"), where("userId", "==", sid)), (s) => {
+                    const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
+                    setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+                    setLoading(false); 
+                }, (error) => {
+                    console.error("Erro:", error);
+                    setLoading(false);
+                });
+
+                return () => { 
+                    unsubUser(); 
+                    unsubTx(); 
+                    if (window.activeUnsubSugg) window.activeUnsubSugg(); 
+                };
+            }; // Chave que fecha o startDataSync corretamente
+
+            /**
+             * Lógica de Autenticação
+             */
+            const handleAuth = async (e) => {
+                if (e) e.preventDefault();
+                if (!email || (!isRecovering && !pass)) {
+                    alert("Preencha os campos corretamente.");
+                    return;
+                }
+
+                setAuthLoading(true);
+                try {
+                    const emailTrim = email.toLowerCase().trim();
+                    const safeId = emailTrim.replace(/[^a-z0-9]/g, '_');
+                    const userRef = doc(db, "users", safeId);
+                    const userSnap = await getDoc(userRef);
+
+                    if (isRecovering) {
+                        auth.languageCode = 'pt';
+                        await sendPasswordResetEmail(auth, emailTrim);
+                        alert("E-mail de redefinição enviado!");
+                        setIsRecovering(false);
+                    } else if (isRegistering) {
+                        // Lógica de Registro... (seu código de registro aqui)
+                    } else {
+                        await signInWithEmailAndPassword(auth, emailTrim, pass);
+                        if (userSnap.exists()) {
+                            const userData = userSnap.data();
+                            const isNiklaus = emailTrim === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
+                            
+                            if (userData.paid || userData.status === 'paid' || isNiklaus) {
+                                const storage = keepConnected ? localStorage : sessionStorage;
+                                storage.setItem('belaju_sid', safeId);
+                                startDataSync(safeId);
+                            } else {
+                                alert("Acesso restrito. Efetue o pagamento.");
+                            }
+                        }
+                    }
+                } catch (err) {
+                    alert("Erro: " + err.message);
+                } finally {
+                    setAuthLoading(false);
+                }
+            }; // Chave que fecha o handleAuth corretamente
 
     return () => { 
         unsubUser(); 
@@ -740,8 +792,8 @@ const sendReply = async (suggestionId, replyText) => {
         await updateDoc(docRef, {
             reply: replyText,
             repliedAt: serverTimestamp(),
-            status: "read", // Quando você responde, ela deixa de ser "não lida"
-            replyViewed: false // Para o usuário receber a bolinha de notificação
+            status: "read",
+            replyViewed: false 
         });
         alert("Resposta enviada com sucesso!");
     } catch (e) {
@@ -756,244 +808,197 @@ const markReplyAsViewed = async (sugId) => {
     } catch (e) { console.error(e); }
 };
 
-            /**
-             * Compartilhamento do app (Web Share API)
-             */
-            const handleAppShare = async () => {
-                const shareData = {
-                    title: 'GestorFinanceiro - Controle Financeiro Premium',
-                    text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link e garanta sua versão Premium com todas as funcionalidades liberadas:',
-                    url: window.location.href
-                };
+/**
+ * Compartilhamento do app (Web Share API)
+ */
+const handleAppShare = async () => {
+    const shareData = {
+        title: 'GestorFinanceiro - Controle Financeiro Premium',
+        text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link:',
+        url: window.location.href
+    };
 
-                try {
-                    if (navigator.share) {
-                        await navigator.share(shareData);
-                    } else {
-                        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-                        alert("Link de convite e informações de acesso copiados para a área de transferência!");
-                    }
-                } catch (err) {
-                    console.log('Error sharing:', err);
+    try {
+        if (navigator.share) {
+            await navigator.share(shareData);
+        } else {
+            await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+            alert("Link copiado com sucesso!");
+        }
+    } catch (err) {
+        console.log('Error sharing:', err);
+    }
+};
+
+// Auxiliar para tratar datas de forma segura (String ou Firebase Timestamp)
+const safeDate = (dateVal) => {
+    if (!dateVal) return "";
+    if (typeof dateVal === 'string') return dateVal.split('T')[0];
+    if (dateVal.seconds) return new Date(dateVal.seconds * 1000).toISOString().split('T')[0];
+    return "";
+};
+
+// Memoized: Transações filtradas
+const currentTransactions = useMemo(() => {
+    let base;
+    if (activeTab === 'transactions' || activeTab === 'analytics') {
+        base = viewSecondaryTransactions ? transactions.filter(t => t.isSecondary) : transactions.filter(t => !t.isSecondary);
+    } else if (activeTab === 'secondary') {
+        base = transactions.filter(t => t.isSecondary);
+    } else {
+        base = transactions.filter(t => !t.isSecondary);
+    }
+
+    let filteredByDate = base;
+    if (balanceMode === 'ACCUMULATED') {
+        if (accumStart && accumEnd) {
+            filteredByDate = base.filter(t => {
+                const d = safeDate(t.date);
+                return d >= accumStart && d <= accumEnd;
+            });
+        }
+    } else {
+        filteredByDate = base.filter(t => safeDate(t.date).startsWith(filterMonth));
+    }
+
+    return filteredByDate
+        .filter(t => typeFilter === 'ALL' ? true : t.type === typeFilter)
+        .filter(t => methodFilter === 'ALL' ? true : t.method === methodFilter);
+}, [transactions, activeTab, filterMonth, typeFilter, methodFilter, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
+
+// Memoized: Totais
+const totals = useMemo(() => {
+    const base = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions) || (activeTab === 'analytics' && viewSecondaryTransactions)) 
+        ? transactions.filter(t => t.isSecondary) 
+        : transactions.filter(t => !t.isSecondary);
+
+    let filtered = base;
+    if (balanceMode === 'ACCUMULATED') {
+        if (accumStart && accumEnd) {
+            filtered = base.filter(t => {
+                const d = safeDate(t.date);
+                return d >= accumStart && d <= accumEnd;
+            });
+        }
+    } else {
+        filtered = base.filter(t => safeDate(t.date).startsWith(filterMonth));
+    }
+
+    const stats = filtered.reduce((acc, t) => {
+        const amount = parseFloat(t.amount) || 0;
+        if (t.type === 'INCOME') acc.inc += amount;
+        else acc.exp += amount;
+        return acc;
+    }, { inc: 0, exp: 0 });
+
+    return { ...stats, bal: stats.inc - stats.exp };
+}, [transactions, filterMonth, activeTab, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
+
+const navigateToExtrato = (isSecondary, filter = 'ALL') => {
+    setViewSecondaryTransactions(isSecondary);
+    setTypeFilter(filter);
+    setActiveTab('transactions');
+};
+
+/**
+ * Exportação de Relatório Financeiro em PDF
+ */
+const exportPDF = () => {
+    // Verificação de segurança para a biblioteca
+    if (!window.jspdf) {
+        alert("Erro: Biblioteca PDF não carregada. Verifique sua conexão.");
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const docPDF = new jsPDF();
+    
+    docPDF.setFontSize(16);
+    const title = viewSecondaryTransactions ? secondaryName : profileName;
+    const periodText = (balanceMode === 'ACCUMULATED' && accumStart && accumEnd) 
+        ? `Período: ${new Date(accumStart).toLocaleDateString()} - ${new Date(accumEnd).toLocaleDateString()}`
+        : (balanceMode === 'ACCUMULATED' ? 'Período: Geral' : `Mês: ${filterMonth}`);
+    
+    docPDF.text(`${title} - Relatório Financeiro`, 14, 15);
+    docPDF.setFontSize(10);
+    docPDF.text(periodText, 14, 22);
+    
+    const rows = currentTransactions.map(t => [
+        new Date(t.date).toLocaleDateString('pt-BR'), 
+        t.description + (t.totalInstallments ? ` (${t.currentInstallment}/${t.totalInstallments})` : ''), 
+        t.method || '-', 
+        t.isPaid ? 'Sim' : 'Não',
+        `R$ ${(t.amount || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
+    ]);
+    
+    docPDF.autoTable({ 
+        startY: 28, 
+        head: [['Data', 'Descrição', 'Canal', 'Pago', 'Valor']], 
+        body: rows,
+        theme: 'grid',
+        headStyles: { fillColor: [139, 92, 246] }
+    });
+
+    const finalY = docPDF.lastAutoTable.finalY + 10;
+    docPDF.text(`Total Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}`, 14, finalY);
+    docPDF.text(`Total Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}`, 14, finalY + 5);
+    docPDF.text(`Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}`, 14, finalY + 10);
+    
+    docPDF.save(`financas-${title}.pdf`);
+};
+
+// Efeito para renderizar gráficos
+useEffect(() => {
+    if (activeTab === 'analytics') {
+        const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
+        const ctxBar = document.getElementById('analyticsBarChart');
+        
+        if (ctxDoughnut) {
+            if (doughnutChartRef.current) doughnutChartRef.current.destroy();
+            const hasData = totals.inc > 0 || totals.exp > 0;
+
+            doughnutChartRef.current = new Chart(ctxDoughnut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Entradas', 'Saídas'],
+                    datasets: [{
+                        data: hasData ? [totals.inc, totals.exp] : [1, 1],
+                        backgroundColor: hasData ? ['#10b981', '#f43f5e'] : ['#1e293b', '#1e293b'],
+                        borderWidth: 0,
+                        borderRadius: 5
+                    }]
+                },
+                options: { 
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: { legend: { display: hasData, position: 'bottom' } }
                 }
-            };
+            });
+        }
 
-            // Memoized: Transações filtradas para exibição atual
-            const currentTransactions = useMemo(() => {
-                let base;
-                // Escolha da base (Principal vs Secundária)
-                if (activeTab === 'transactions' || activeTab === 'analytics') {
-                    base = viewSecondaryTransactions ? transactions.filter(t => t.isSecondary) : transactions.filter(t => !t.isSecondary);
-                } else if (activeTab === 'secondary') {
-                    base = transactions.filter(t => t.isSecondary);
-                } else {
-                    base = transactions.filter(t => !t.isSecondary);
-                }
+        if (ctxBar) {
+            if (barChartRef.current) barChartRef.current.destroy();
+            const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
+            const methodLabels = ['PIX', 'Crédito', 'Débito', 'Dinheiro'];
+            const methodColors = { 'PIX': '#10b981', 'CREDITO': '#8b5cf6', 'DEBITO': '#0ea5e9', 'DINHEIRO': '#f59e0b' };
 
-                // Filtragem por Período
-                let filteredByDate = base;
-                if (balanceMode === 'ACCUMULATED') {
-                    if (accumStart && accumEnd) {
-                        filteredByDate = base.filter(t => {
-                            const d = (t.date || '').split('T')[0];
-                            return d >= accumStart && d <= accumEnd;
-                        });
-                    }
-                } else {
-                    filteredByDate = base.filter(t => (t.date || '').startsWith(filterMonth));
-                }
+            const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).length);
+            const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === m).length);
 
-                // Filtragem por Tipo e Canal
-                return filteredByDate
-                           .filter(t => typeFilter === 'ALL' ? true : t.type === typeFilter)
-                           .filter(t => methodFilter === 'ALL' ? true : t.method === methodFilter);
-            }, [transactions, activeTab, filterMonth, typeFilter, methodFilter, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
-
-            // Memoized: Totais (Entradas, Saídas e Saldo)
-            const totals = useMemo(() => {
-                const base = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions) || (activeTab === 'analytics' && viewSecondaryTransactions)) 
-                    ? transactions.filter(t => t.isSecondary) 
-                    : transactions.filter(t => !t.isSecondary);
-
-                let filtered = base;
-                if (balanceMode === 'ACCUMULATED') {
-                    if (accumStart && accumEnd) {
-                        filtered = base.filter(t => {
-                            const d = (t.date || '').split('T')[0];
-                            return d >= accumStart && d <= accumEnd;
-                        });
-                    }
-                } else {
-                    filtered = base.filter(t => (t.date || '').startsWith(filterMonth));
-                }
-
-                const stats = filtered.reduce((acc, t) => {
-                    const amount = parseFloat(t.amount) || 0;
-                    if (t.type === 'INCOME') acc.inc += amount;
-                    else acc.exp += amount;
-                    return acc;
-                }, { inc: 0, exp: 0 });
-
-                return { ...stats, bal: stats.inc - stats.exp };
-            }, [transactions, filterMonth, activeTab, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
-
-            /**
-             * Navegada para aba de extrato configurada
-             */
-            const navigateToExtrato = (isSecondary, filter = 'ALL') => {
-                setViewSecondaryTransactions(isSecondary);
-                setTypeFilter(filter);
-                setActiveTab('transactions');
-            };
-
-            /**
-             * Exportação de Relatório Financeiro em PDF
-             */
-            const exportPDF = () => {
-                const { jsPDF } = window.jspdf;
-                const docPDF = new jsPDF();
-                docPDF.setFontSize(16);
-                const title = viewSecondaryTransactions ? secondaryName : profileName;
-                const periodText = (balanceMode === 'ACCUMULATED' && accumStart && accumEnd) 
-                    ? `Período: ${new Date(accumStart).toLocaleDateString()} - ${new Date(accumEnd).toLocaleDateString()}`
-                    : (balanceMode === 'ACCUMULATED' ? 'Período: Geral (Todos os meses)' : `Mês: ${filterMonth}`);
-                
-                docPDF.text(`${title} - Relatório Financeiro`, 14, 15);
-                docPDF.setFontSize(10);
-                docPDF.text(periodText, 14, 22);
-                
-                const rows = currentTransactions.map(t => [
-                    new Date(t.date).toLocaleDateString('pt-BR'), 
-                    t.description + (t.totalInstallments ? ` (${t.currentInstallment}/${t.totalInstallments} - Total R$ ${(t.totalValue || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})` : ''), 
-                    t.method || '-', 
-                    t.isPaid ? 'Sim' : 'Não',
-                    `R$ ${(t.amount || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
-                ]);
-                
-                docPDF.autoTable({ 
-                    startY: 28, 
-                    head: [['Data', 'Descrição', 'Canal', 'Pago', 'Valor']], 
-                    body: rows,
-                    theme: 'grid',
-                    headStyles: { fillColor: [139, 92, 246] }
-                });
-
-                const finalY = docPDF.lastAutoTable.finalY + 10;
-                docPDF.text(`Total Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}`, 14, finalY);
-                docPDF.text(`Total Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}`, 14, finalY + 5);
-                docPDF.text(`Saldo do Período: R$ ${totals.bal.toLocaleString('pt-BR')}`, 14, finalY + 10);
-                
-                docPDF.save(`financas-${title}-${new Date().getTime()}.pdf`);
-            };
-
-            // Efeito para renderizar gráficos
-            useEffect(() => {
-                if (activeTab === 'analytics') {
-                    const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
-                    const ctxBar = document.getElementById('analyticsBarChart');
-                    
-                    if (ctxDoughnut) {
-                        if (doughnutChartRef.current) doughnutChartRef.current.destroy();
-                        
-                        const hasData = totals.inc > 0 || totals.exp > 0;
-
-                        doughnutChartRef.current = new Chart(ctxDoughnut, {
-                            type: 'doughnut',
-                            data: {
-                                labels: ['Entradas', 'Saídas'],
-                                datasets: [{
-                                    data: hasData ? [totals.inc, totals.exp] : [1, 1],
-                                    backgroundColor: hasData ? ['#10b981', '#f43f5e'] : ['#1e293b', '#1e293b'],
-                                    hoverOffset: 12,
-                                    borderWidth: 0,
-                                    borderRadius: 5
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                cutout: '70%',
-                                plugins: {
-                                    legend: {
-                                        display: hasData,
-                                        position: 'bottom',
-                                        labels: { color: '#94a3b8', font: { weight: 'bold', size: 10 }, padding: 20 }
-                                    }
-                                }
-                            }
-                        });
-                    }
-
-                    if (ctxBar) {
-                        if (barChartRef.current) barChartRef.current.destroy();
-
-                        const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
-                        const methodLabels = ['PIX', 'Crédito', 'Débito', 'Dinheiro'];
-                        const methodColors = {
-                            'PIX': '#10b981',
-                            'CREDITO': '#8b5cf6',
-                            'DEBITO': '#0ea5e9',
-                            'DINHEIRO': '#f59e0b'
-                        };
-
-                        const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).length);
-                        const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === m).length);
-
-                        barChartRef.current = new Chart(ctxBar, {
-                            type: 'bar',
-                            data: {
-                                labels: methodLabels,
-                                datasets: [
-                                    {
-                                        label: 'Qtd Entradas',
-                                        data: incomeCounts,
-                                        backgroundColor: methods.map(m => methodColors[m] + 'CC'),
-                                        borderColor: methods.map(m => methodColors[m]),
-                                        borderWidth: 2,
-                                        borderRadius: 6
-                                    },
-                                    {
-                                        label: 'Qtd Saídas',
-                                        data: expenseCounts,
-                                        backgroundColor: methods.map(m => methodColors[m] + '66'),
-                                        borderColor: methods.map(m => methodColors[m]),
-                                        borderWidth: 1,
-                                        borderRadius: 6,
-                                        borderDash: [5, 5]
-                                    }
-                                ]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        ticks: { color: '#64748b', stepSize: 1, font: { size: 10 } },
-                                        grid: { color: '#1e293b' }
-                                    },
-                                    x: {
-                                        ticks: { color: '#94a3b8', font: { size: 11, weight: 'bold' } },
-                                        grid: { display: false }
-                                    }
-                                },
-                                plugins: {
-                                    legend: {
-                                        position: 'top',
-                                        labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true }
-                                    },
-                                    tooltip: {
-                                        backgroundColor: '#0f172a',
-                                        titleFont: { size: 12 },
-                                        bodyFont: { size: 11 },
-                                        padding: 12,
-                                        cornerRadius: 12
-                                    }
-                                }
-                            }
-                        });
-                    }
-                }
-            }, [activeTab, currentTransactions, totals]);
+            barChartRef.current = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: methodLabels,
+                    datasets: [
+                        { label: 'Entradas', data: incomeCounts, backgroundColor: methods.map(m => methodColors[m] + 'CC') },
+                        { label: 'Saídas', data: expenseCounts, backgroundColor: methods.map(m => methodColors[m] + '66') }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+    }
+}, [activeTab, currentTransactions, totals]);
 
             // Tela de Carregamento Inicial
             if (loading) return html`<div className="h-screen flex items-center justify-center bg-slate-950"><div className="loader w-10 h-10 border-4 border-slate-800 rounded-full"></div></div>`;

@@ -1,19 +1,19 @@
-<!DOCTYPE html>
 
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Finanças</title>
     
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Finanças">
+    <!-- Configurações para Web App (PWA) e Favicons -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
     <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
     <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png">
     
+    <!-- Importação de bibliotecas externas -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -52,7 +52,7 @@
         }
         @keyframes spinner { to { transform: rotate(360deg); } }
 
-        /* Animações de Entrada */
+        /* Animações de Entrada de Elementos */
         .animate-in {
             animation: fadeIn 0.3s ease-out forwards;
         }
@@ -62,7 +62,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Destaque Sidebar */
+        /* Destaque para item ativo na Sidebar */
         .sidebar-item-active {
             background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0) 100%);
             color: var(--primary);
@@ -70,9 +70,11 @@
             text-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
         }
 
+        /* Customização de Scrollbar */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         
+        /* Ajuste de inputs para dispositivos móveis */
         input, select, textarea { font-size: 16px !important; color: white !important; }
         
         @media (max-width: 640px) {
@@ -86,8 +88,11 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        .notification-layer { z-index: 9999 !important; }
+        .notification-layer {
+            z-index: 9999 !important;
+        }
 
+        /* Efeito de desfoque para ocultar valores */
         .blur-value {
             filter: blur(8px);
             opacity: 0.6;
@@ -95,9 +100,11 @@
             pointer-events: none;
         }
 
-        .transition-value { transition: filter 0.3s ease, opacity 0.3s ease; }
+        .transition-value {
+            transition: filter 0.3s ease, opacity 0.3s ease;
+        }
 
-        /* Estilização Switch */
+        /* Estilização do Toggle Switch (Configurações) */
         .switch {
           position: relative;
           display: inline-block;
@@ -105,12 +112,19 @@
           height: 24px;
         }
 
-        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch input { 
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
 
         .slider {
           position: absolute;
           cursor: pointer;
-          top: 0; left: 0; right: 0; bottom: 0;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
           background-color: #334155;
           transition: .4s;
           border-radius: 34px;
@@ -119,17 +133,25 @@
         .slider:before {
           position: absolute;
           content: "";
-          height: 18px; width: 18px;
-          left: 3px; bottom: 3px;
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
           background-color: white;
           transition: .4s;
           border-radius: 50%;
         }
 
-        input:checked + .slider { background-color: var(--primary); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        input:checked + .slider {
+          background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(20px);
+        }
     </style>
 
+    <!-- Mapeamento de Módulos (ESM) -->
     <script type="importmap">
     {
       "imports": {
@@ -137,7 +159,6 @@
         "react-dom": "https://esm.sh/react-dom@18.2.0",
         "firebase/app": "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js",
         "firebase/firestore": "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js",
         "htm": "https://esm.sh/htm@3.1.1",
         "@google/genai": "https://esm.sh/@google/genai"
       }
@@ -294,79 +315,84 @@
             /**
              * Inicia a sincronização de dados em tempo real com o Firestore
              */
-            // ... dentro do seu componente App ...
-
-/**
- * Inicia a sincronização de dados em tempo real com o Firestore
- */
-const startDataSync = (sid) => {
-    setLoading(true);
-    
-    // 1. Monitoramento de dados do usuário
-    const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-        if (s.exists()) {
-            const userData = { id: s.id, ...s.data() };
-            
-            // Verificação de Admin
-            const isNiklaus = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
-            
-            if (!isNiklaus && userData.status !== 'paid') {
-                 alert("Acesso Bloqueado.");
-                 handleLogout();
-                 return;
-            }
-
-            setUser(userData);
-            setProfileName(userData.appName || 'Meu Perfil');
-            setSecondaryName(userData.secondaryName || 'Conta 2');
-            setProfilePhoto(userData.photoURL || '');
-            setSecondaryPhoto(userData.secondaryPhotoURL || '');
-            setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
-
-            // 2. Monitoramento de Sugestões
-            let qs = isNiklaus 
-                ? query(collection(db, "suggestions"), orderBy("createdAt", "desc"))
-                : query(collection(db, "suggestions"), where("userId", "==", sid));
-
-            const unsubSugg = onSnapshot(qs, (snap) => {
-                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const startDataSync = (sid) => {
+                setLoading(true);
                 
-                setAdminSuggestions(list); 
-                setUserSuggestions(list); 
-                if (typeof setSuggestions === 'function') setSuggestions(list); 
+                // Monitoramento de dados do usuário
+                const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+                    if (s.exists()) {
+                        const userData = { id: s.id, ...s.data() };
+                        // Bloqueio de segurança para usuários não pagos (exceto adm)
+                        if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
+                             alert("Acesso Bloqueado.");
+                             handleLogout();
+                             return;
+                        }
+                        setUser(userData);
+                        setProfileName(userData.appName || 'Meu Perfil');
+                        setSecondaryName(userData.secondaryName || 'Conta 2');
+                        setProfilePhoto(userData.photoURL || '');
+                        setSecondaryPhoto(userData.secondaryPhotoURL || '');
+                        setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
+                    } else handleLogout();
+                });
 
-                // Lógica de Notificações
-                if (isNiklaus) {
-                    setUnreadCount(list.filter(sug => !sug.reply || sug.status === 'unread').length);
+                // Monitoramento das transações do usuário
+                const q = query(collection(db, "transactions"), where("userId", "==", sid));
+                const unsubTx = onSnapshot(q, (s) => {
+                    const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
+                    setTransactions(docs.sort((a, b) => {
+                        const dateA = a.createdAt?.seconds || 0;
+                        const dateB = b.createdAt?.seconds || 0;
+                        return dateB - dateA;
+                    }));
+                    setLoading(false);
+                });
+
+                // Monitoramento de sugestões (feedback do admin)
+                let unsubSugg = () => {};
+                if (sid === 'niklaus') {
+                    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+                    unsubSugg = onSnapshot(qs, (s) => {
+                        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
+                    });
                 } else {
-                    setUnreadCount(list.filter(sug => sug.reply && sug.replyViewed === false).length);
+                    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+                    unsubSugg = onSnapshot(qsUser, (s) => {
+                        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                        setUserSuggestions(suggestions);
+                        const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
+                        setUnreadCount(unread);
+                    });
                 }
-            });
 
-            window.activeUnsubSugg = unsubSugg;
-        } else {
-            handleLogout();
-        }
-    });
+                return () => { unsubUser(); unsubTx(); unsubSugg(); };
+            };
 
-    // 3. Monitoramento das transações
-    const q = query(collection(db, "transactions"), where("userId", "==", sid));
-    const unsubTx = onSnapshot(q, (s) => {
-        const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
-        setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        setLoading(false); 
-    }, (error) => {
-        console.error("Erro nas transações:", error);
-        setLoading(false);
-    });
+            // Efeito para checar persistência de login ao carregar
+            useEffect(() => {
+                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+                if (sid) return startDataSync(sid);
+                setLoading(false);
+            }, []);
 
-    // ESTE É O ÚNICO RETURN QUE DEVE EXISTIR NO FINAL DA FUNÇÃO
-    return () => { 
-        unsubUser(); 
-        unsubTx(); 
-        if (window.activeUnsubSugg) window.activeUnsubSugg(); 
-    };
-};// <--- CERTIFIQUE-SE DE QUE ESTA CHAVE EXISTE PARA FECHAR A FUNÇÃO
+            // Efeito para fechar dropdown de notificações ao clicar fora
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
+                        setShowNotificationList(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => document.removeEventListener('mousedown', handleClickOutside);
+            }, []);
+
+            // Notificações formatadas (respostas do admin)
+            const notifications = useMemo(() => {
+                return [...userSuggestions]
+                    .filter(sug => sug.reply)
+                    .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
+            }, [userSuggestions]);
 
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
@@ -376,6 +402,7 @@ const startDataSync = (sid) => {
 const handleAuth = async (e) => {
     if (e) e.preventDefault();
     
+    // Validação inicial
     if (!email || (!isRecovering && !pass)) {
         alert("Preencha os campos corretamente.");
         return;
@@ -384,17 +411,16 @@ const handleAuth = async (e) => {
     setAuthLoading(true);
     
     try {
-        const emailTrim = email.toLowerCase().trim();
-        // Gerar o ID do documento da mesma forma que está no seu Firestore
-        const safeId = emailTrim.replace(/[^a-z0-9]/g, '_');
+        // 'auth' e 'db' já foram inicializados no topo do script
+        const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
         const userRef = doc(db, "users", safeId);
         const userSnap = await getDoc(userRef);
 
         // --- MODO: RECUPERAÇÃO DE SENHA ---
         if (isRecovering) {
             auth.languageCode = 'pt';
-            await sendPasswordResetEmail(auth, emailTrim);
-            alert("E-mail de redefinição enviado!");
+            await sendPasswordResetEmail(auth, email.trim());
+            alert("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
             setIsRecovering(false);
         } 
         
@@ -403,14 +429,15 @@ const handleAuth = async (e) => {
             if (userSnap.exists()) {
                 alert("Este e-mail já está cadastrado.");
             } else {
-                const cred = await createUserWithEmailAndPassword(auth, emailTrim, pass);
+                // Cria no Authentication
+                const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+                // Salva no Firestore
                 await setDoc(userRef, {
                     uid: cred.user.uid,
-                    email: emailTrim,
-                    password: pass, 
+                    email: email.trim(),
+                    password: pass, // Senha em texto para o seu sistema de login legado
                     status: 'pending',
                     paid: false,
-                    isAdmin: "false", // Padrão para novos usuários
                     createdAt: serverTimestamp()
                 });
                 alert("Conta criada com sucesso!");
@@ -418,28 +445,27 @@ const handleAuth = async (e) => {
             }
         } 
         
-        // --- MODO: LOGIN ---
+        // --- MODO: LOGIN COM SINCRONIZAÇÃO DE SENHA ---
         else {
             try {
-                // 1. Autenticação oficial do Firebase
-                await signInWithEmailAndPassword(auth, emailTrim, pass);
+                // 1. Tenta logar no Firebase Auth (valida a senha nova se tiver sido resetada)
+                await signInWithEmailAndPassword(auth, email.trim(), pass);
                 
                 if (userSnap.exists()) {
                     const userData = userSnap.data();
 
-                    // 2. Sincronização de senha (opcional, mas corrigida)
+                    // 2. SINCRONIZAÇÃO: Se a senha digitada for diferente da que está no Firestore, atualiza o Firestore
                     if (userData.password !== pass) {
                         await updateDoc(userRef, { password: pass });
+                        console.log("Senha sincronizada no banco de dados.");
                     }
 
-                    // 3. Verificação de Acesso (AJUSTADO PARA O SEU E-MAIL REAL)
-                    const isNiklaus = emailTrim === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
-                    const hasAccess = userData.paid || userData.status === 'paid' || isNiklaus;
-
-                    if (hasAccess) {
+                    // 3. Verificação de Acesso (Pagamento ou Admin)
+                    if (userData.paid || userData.status === 'paid' || email.toLowerCase() === 'niklaus') {
                         const storage = keepConnected ? localStorage : sessionStorage;
                         storage.setItem('belaju_sid', safeId);
                         
+                        // Inicia sincronização de dados do app
                         if (typeof startDataSync === 'function') {
                             startDataSync(safeId);
                         } else {
@@ -453,12 +479,12 @@ const handleAuth = async (e) => {
                 }
             } catch (authErr) {
                 console.error("Erro no login:", authErr);
-                alert("E-mail ou senha incorretos.");
+                alert("E-mail ou senha incorretos. Se você redefiniu a senha, use a nova.");
             }
         }
     } catch (err) {
         console.error("Erro Geral:", err);
-        alert("Erro: " + err.message);
+        alert("Ocorreu um erro: " + err.message);
     } finally {
         setAuthLoading(false);
     }
@@ -720,53 +746,38 @@ const generateAIAdvice = async () => {
 const sendSuggestion = async () => {
     if (!suggestionText.trim()) return;
     setSendingSuggestion(true);
-    
     try {
-        // Adicionamos o campo 'status' para controlar as notificações no seu painel
         await addDoc(collection(db, "suggestions"), {
             userId: user.id,
-            userName: profileName || 'Usuário',
+            userName: profileName || 'Usuário', // Importante para você saber quem mandou
             userEmail: user.email,
             message: suggestionText,
-            createdAt: serverTimestamp(), // Certifique-se de que serverTimestamp foi importado do firestore
-            status: "unread",  // <--- ESSENCIAL: Isso fará a bolinha de notificação aparecer para você
+            createdAt: serverTimestamp(),
             reply: null,
             repliedAt: null,
             replyViewed: false
         });
-
         setSuggestionText('');
-        
-        // Feedback visual mais moderno
-        if (typeof toast !== 'undefined') {
-            toast.success("Sugestão enviada! Niklaus será notificado.");
-        } else {
-            alert("Obrigado! Sua sugestão foi enviada e o administrador foi notificado.");
-        }
+        alert("Obrigado! Sua sugestão foi enviada com sucesso.");
     } catch (e) { 
-        console.error("Erro ao enviar:", e);
-        alert("Erro ao enviar sugestão. Verifique sua conexão."); 
+        alert("Erro ao enviar sugestão."); 
     } finally { 
         setSendingSuggestion(false); 
     }
 };
 
 // Função exclusiva para o Niklaus responder
-const sendReply = async (suggestionId, replyText) => {
-    if (!replyText.trim()) return;
-    
+const sendReply = async (sugId, replyText) => {
+    if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
     try {
-        const docRef = doc(db, "suggestions", suggestionId);
-        await updateDoc(docRef, {
+        await updateDoc(doc(db, "suggestions", sugId), {
             reply: replyText,
             repliedAt: serverTimestamp(),
-            status: "read", // Quando você responde, ela deixa de ser "não lida"
-            replyViewed: false // Para o usuário receber a bolinha de notificação
+            replyViewed: false
         });
         alert("Resposta enviada com sucesso!");
     } catch (e) {
         console.error("Erro ao responder:", e);
-        alert("Erro ao enviar resposta.");
     }
 };
 

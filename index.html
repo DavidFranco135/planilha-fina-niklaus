@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -334,13 +335,9 @@
   setLoading(true);
 
   let unsubSugg = () => {};
-  let unsubTx = () => {};
 
   const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-    if (!s.exists()) {
-      handleLogout();
-      return;
-    }
+    if (!s.exists()) return handleLogout();
 
     const userData = { id: s.id, ...s.data() };
     const isAdmin = userData.email?.toLowerCase() === "davidbhmg147@gmail.com";
@@ -353,80 +350,38 @@
 
     setUser(userData);
 
-    // 🔔 SUGESTÕES / NOTIFICAÇÕES
-    if (unsubSugg) unsubSugg();
+    // 👉 cancela listener antigo antes de criar outro
+    unsubSugg();
 
     if (isAdmin) {
-      const qs = query(
-        collection(db, "suggestions"),
-        orderBy("createdAt", "desc")
-      );
-
+      const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
       unsubSugg = onSnapshot(qs, (snap) => {
-        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setAdminSuggestions(all);
-
-        // 🔔 Sino do ADM = sugestões sem resposta
-        const unreadAdmin = all.filter(s => !s.reply || s.reply === "").length;
-        setUnreadCount(unreadAdmin);
+        setAdminSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
-
     } else {
-      const qsUser = query(
-        collection(db, "suggestions"),
-        where("userId", "==", sid)
-      );
-
+      const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
       unsubSugg = onSnapshot(qsUser, (snap) => {
-        const userSugs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(userSugs);
-
-        // 🔔 Sino do Usuário = respostas novas
-        const unreadUser = userSugs.filter(
-          s => s.reply && s.replyViewed === false
-        ).length;
-
-        setUnreadCount(unreadUser);
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setUserSuggestions(list);
+        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
+        setUnreadCount(unread);
       });
     }
-  }); // ✅ FECHA onSnapshot do usuário
+  });
 
-  // 🔄 TRANSAÇÕES
-  const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
-  unsubTx = onSnapshot(qTx, (snap) => {
-    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setTransactions(
-      docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-    );
+  const q = query(collection(db, "transactions"), where("userId", "==", sid));
+  const unsubTx = onSnapshot(q, (s) => {
+    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     setLoading(false);
   });
 
   return () => {
     unsubUser();
     unsubTx();
-    if (unsubSugg) unsubSugg();
+    unsubSugg();
   };
 };
-
-
-
-  // 🔄 TRANSAÇÕES
-  const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
-  unsubTx = onSnapshot(qTx, (snap) => {
-    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setTransactions(
-      docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-    );
-    setLoading(false);
-  });
-
-  return () => {
-    unsubUser();
-    unsubTx();
-    if (unsubSugg) unsubSugg();
-  };
-};
-
 
 
             // Efeito para checar persistência de login ao carregar
@@ -809,12 +764,6 @@ const sendSuggestion = async () => {
   setSendingSuggestion(true);
 
   try {
-    const sendSuggestion = async () => {
-  if (!suggestionText.trim() || !user?.id) return;
-
-  setSendingSuggestion(true);
-
-  try {
     await addDoc(collection(db, "suggestions"), {
       userId: user.id,
       userName: profileName || "Usuário",
@@ -822,13 +771,10 @@ const sendSuggestion = async () => {
       message: suggestionText.trim(),
       createdAt: serverTimestamp(),
 
-      // Comunicação
+      // campos usados na comunicação
       reply: "",
       repliedAt: null,
-      replyViewed: false,
-
-      // 🔔 Controle de notificação do ADM
-      adminViewed: false
+      replyViewed: false
     });
 
     setSuggestionText("");
@@ -837,33 +783,51 @@ const sendSuggestion = async () => {
     console.error("Erro ao enviar sugestão:", err);
     alert("Erro ao enviar a mensagem. Tente novamente.");
   } finally {
-    setSendingSuggestion(false);
-  }
-};
+    setSendingSuggestion(f
 
 
-/**
- * Compartilhamento do app (Web Share API)
- */
-const handleAppShare = async () => {
-  const shareData = {
-    title: 'GestorFinanceiro - Controle Financeiro Premium',
-    text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link e garanta sua versão Premium com todas as funcionalidades liberadas:',
-    url: window.location.href
-  };
-
-  try {
-    if (navigator.share) {
-      await navigator.share(shareData);
-    } else {
-      await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-      alert("Link de convite e informações de acesso copiados para a área de transferência!");
+// Função exclusiva para o Niklaus responder
+const sendReply = async (sugId, replyText) => {
+    if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
+    try {
+        await updateDoc(doc(db, "suggestions", sugId), {
+            reply: replyText,
+            repliedAt: serverTimestamp(),
+            replyViewed: false
+        });
+        alert("Resposta enviada com sucesso!");
+    } catch (e) {
+        console.error("Erro ao responder:", e);
     }
-  } catch (err) {
-    console.log('Error sharing:', err);
-  }
 };
 
+const markReplyAsViewed = async (sugId) => {
+    try {
+        await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
+    } catch (e) { console.error(e); }
+};
+
+            /**
+             * Compartilhamento do app (Web Share API)
+             */
+            const handleAppShare = async () => {
+                const shareData = {
+                    title: 'GestorFinanceiro - Controle Financeiro Premium',
+                    text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link e garanta sua versão Premium com todas as funcionalidades liberadas:',
+                    url: window.location.href
+                };
+
+                try {
+                    if (navigator.share) {
+                        await navigator.share(shareData);
+                    } else {
+                        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+                        alert("Link de convite e informações de acesso copiados para a área de transferência!");
+                    }
+                } catch (err) {
+                    console.log('Error sharing:', err);
+                }
+            };
 
             // Memoized: Transações filtradas para exibição atual
             const currentTransactions = useMemo(() => {

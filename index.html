@@ -750,7 +750,6 @@ const sendSuggestion = async () => {
   if (!suggestionText.trim()) return;
 
   setSendingSuggestion(true);
-
   try {
     await addDoc(collection(db, "suggestions"), {
       userId: user.id,
@@ -758,14 +757,13 @@ const sendSuggestion = async () => {
       message: suggestionText.trim(),
       createdAt: serverTimestamp()
     });
-
     setSuggestionText('');
   } catch (e) {
     alert("Erro ao enviar sugestão");
   }
-
   setSendingSuggestion(false);
 };
+
 
 
 // Função exclusiva para o Niklaus responder
@@ -778,6 +776,7 @@ const sendReply = async (id, text) => {
     replyViewed: false
   });
 };
+
 
         alert("Resposta enviada com sucesso!");
     } catch (e) {
@@ -1586,7 +1585,6 @@ const markReplyAsViewed = async (sugId) => {
 
   ${user.email === 'davidbhmg147@gmail.com' ? html`
     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-
       ${adminSuggestions.length === 0 
         ? html`<p className="text-[10px] text-slate-500 text-center uppercase">Nenhuma sugestão nova.</p>` 
         : ''}
@@ -1594,7 +1592,9 @@ const markReplyAsViewed = async (sugId) => {
       ${adminSuggestions.map(sug => html`
         <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
           <div className="flex justify-between mb-2">
-            <span className="text-[8px] font-black text-violet-400 uppercase">${sug.userName || 'Usuário'}</span>
+            <span className="text-[8px] font-black text-violet-400 uppercase">
+              ${sug.userName || 'Usuário'}
+            </span>
             <span className="text-[8px] text-slate-600">
               ${sug.createdAt?.toDate ? new Date(sug.createdAt.toDate()).toLocaleDateString() : ''}
             </span>
@@ -1608,21 +1608,12 @@ const markReplyAsViewed = async (sugId) => {
             </div>
           ` : html`
             <div className="flex gap-2">
-              <input
-                type="text"
-                id=${`reply-${sug.id}`}
-                placeholder="Responder..."
-                className="flex-1 bg-slate-800 border-0 rounded-lg text-[10px] p-2 text-white outline-none"
-              />
-              <button
-                onClick=${() => {
-                  const input = document.getElementById(`reply-${sug.id}`);
-                  if (!input.value) return;
-                  sendReply(sug.id, input.value);
-                  input.value = '';
-                }}
-                className="bg-violet-600 px-3 rounded-lg text-white text-[10px]"
-              >
+              <input id=${`reply-${sug.id}`} className="flex-1 bg-slate-800 rounded-lg text-[10px] p-2 text-white" placeholder="Responder..." />
+              <button onClick=${() => {
+                const i = document.getElementById(`reply-${sug.id}`);
+                sendReply(sug.id, i.value);
+                i.value='';
+              }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px]">
                 <i className="fas fa-paper-plane"></i>
               </button>
             </div>
@@ -1632,20 +1623,18 @@ const markReplyAsViewed = async (sugId) => {
     </div>
   ` : html`
     <div className="space-y-4">
-      <textarea 
-        value=${suggestionText}
-        onInput=${e => setSuggestionText(e.target.value)}
-        className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px] outline-none focus:border-violet-500 transition-all" 
-        placeholder="No que podemos melhorar o app?">
-      </textarea>
+      <textarea value=${suggestionText} onInput=${e => setSuggestionText(e.target.value)}
+        className="w-full bg-slate-950 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px]"
+        placeholder="No que podemos melhorar o app?"></textarea>
 
-      <button 
-        disabled=${sendingSuggestion}
-        onClick=${sendSuggestion} 
-        className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">
+      <button disabled=${sendingSuggestion} onClick=${sendSuggestion}
+        className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase">
         ${sendingSuggestion ? 'Enviando...' : 'Enviar Feedback'}
       </button>
     </div>
+  `}
+</div>
+
   `}
 </div>
 <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">

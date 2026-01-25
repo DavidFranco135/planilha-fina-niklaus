@@ -772,14 +772,16 @@ const sendSuggestion = async () => {
 
 
 // Função exclusiva para o Niklaus responder
-const sendReply = async (sugId, replyText) => {
-    if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
-    try {
-        await updateDoc(doc(db, "suggestions", sugId), {
-            reply: replyText,
-            repliedAt: serverTimestamp(),
-            replyViewed: false
-        });
+const sendReply = async (id, text) => {
+  if (!text.trim()) return;
+
+  await updateDoc(doc(db, "suggestions", id), {
+    reply: text.trim(),
+    repliedAt: serverTimestamp(),
+    replyViewed: false
+  });
+};
+
         alert("Resposta enviada com sucesso!");
     } catch (e) {
         console.error("Erro ao responder:", e);

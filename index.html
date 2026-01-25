@@ -347,7 +347,6 @@
 
     setUser(userData);
 
-    // 🔥 Sync das sugestões
     let unsubSugg = () => {};
 
     if (isAdmin) {
@@ -358,8 +357,7 @@
     } else {
       const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
       unsubSugg = onSnapshot(qsUser, (snap) => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(list);
+        setUserSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
     }
 
@@ -367,13 +365,11 @@
   });
 
   const q = query(collection(db, "transactions"), where("userId", "==", sid));
-  const unsubTx = onSnapshot(q, (s) => {
-    setTransactions(s.docs.map(d => ({ id: d.id, ...d.data() })));
-    setLoading(false);
-  });
+  const unsubTx = onSnapshot(q, () => setLoading(false));
 
   return () => { unsubUser(); unsubTx(); };
 };
+
 
 
             // Efeito para checar persistência de login ao carregar

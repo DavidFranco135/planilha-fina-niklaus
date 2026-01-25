@@ -1707,52 +1707,90 @@ ${activeTab === 'settings' ? html`
   }
 
   // Enviar mensagem manual
+ <script>
+  // --- Enviar mensagem manual ---
   document.getElementById("manual-send-btn").addEventListener("click", async () => {
     const userId = document.getElementById("manual-user-select").value;
     const mensagem = document.getElementById("manual-message").value;
 
-    if (!userId || !mensagem) return alert("Escolha um usuário e digite uma mensagem.");
+    if (!userId || !mensagem) {
+      return alert("Escolha um usuário e digite uma mensagem.");
+    }
 
-    const res = await fetch("/mensagem-para-usuario", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, mensagem })
-    });
+    try {
+      const res = await fetch("/mensagem-para-usuario", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, mensagem })
+      });
 
-    const data = await res.json();
-    if (data.sucesso) {
-      alert("Mensagem enviada com sucesso!");
-      document.getElementById("manual-message").value = "";
-      carregarHistorico(); // Atualiza histórico automaticamente
-    } else {
-      alert("Erro ao enviar mensagem: " + data.erro);
+      const data = await res.json();
+
+      if (data.sucesso) {
+        alert("Mensagem enviada com sucesso!");
+        document.getElementById("manual-message").value = "";
+        carregarHistorico(); // Atualiza histórico automaticamente
+      } else {
+        alert("Erro ao enviar mensagem: " + data.erro);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao enviar mensagem.");
     }
   });
 
-  // Carrega histórico de mensagens
+  // --- Carregar histórico de mensagens ---
   async function carregarHistorico() {
-    const res = await fetch("/historico-mensagens");
-    const mensagens = await res.json();
+    try {
+      const res = await fetch("/historico-mensagens");
+      const mensagens = await res.json();
 
-    const historyDiv = document.getElementById("message-history");
-    if (!mensagens.length) {
-      historyDiv.innerHTML = '<p class="text-[10px] text-slate-500 text-center">Nenhuma mensagem ainda.</p>';
-      return;
-    }
+      const historyDiv = document.getElementById("message-history");
+      if (!mensagens || mensagens.length === 0) {
+        historyDiv.innerHTML = '<p class="text-[10px] text-slate-500 text-center">Nenhuma mensagem ainda.</p>';
+        return;
+      }
 
-    historyDiv.innerHTML = mensagens.map(msg => `
-      <div class="p-2 bg-slate-950 rounded-xl border border-slate-800">
-        <div class="flex justify-between mb-1">
-          <span class="text-[8px] font-black text-violet-400 uppercase">${msg.remetenteNome || msg.remetenteEmail}</span>
-          <span class="text-[8px] text-slate-600">${new Date(msg.createdAt).toLocaleString()}</span>
+      historyDiv.innerHTML = mensagens.map(msg => `
+        <div class="p-2 bg-slate-950 rounded-xl border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-[8px] font-black text-violet-400 uppercase">${msg.remetenteNome || msg.remetenteEmail}</span>
+            <span class="text-[8px] text-slate-600">${new Date(msg.createdAt).toLocaleString()}</span>
+          </div>
+          <p class="text-[10px] text-slate-300">${msg.texto}</p>
         </div>
-        <p class="text-[10px] text-slate-300">${msg.texto}</p>
-      </div>
-    `).join('');
+      `).join('');
+    } catch (err) {
+      console.error(err);
+      document.getElementById("message-history").innerHTML = '<p class="text-[10px] text-rose-500 text-center">Erro ao carregar histórico.</p>';
+    }
   }
 
+  // --- Carregar todos os usuários no dropdown ---
+  async function carregarUsuarios() {
+    try {
+      const res = await fetch("/usuarios-com-status");
+      const usuarios = await res.json();
+
+      const select = document.getElementById("manual-user-select");
+      select.innerHTML = '<option value="">Escolha um usuário</option>';
+      usuarios.forEach(u => {
+        const opt = document.createElement("option");
+        opt.value = u.id;
+        opt.textContent = `${u.nome || u.email} ${u.jaRecebeuMensagem ? "(Já recebeu)" : ""}`;
+        select.appendChild(opt);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // --- Inicializa ---
   carregarUsuarios();
   carregarHistorico();
-</script>
 
-    // Renderização Final no DOM ReactDOM.render(html<${App} />, document.getElementById('root')); </script> </body> </html>
+  // --- Renderiza o App React ---
+  ReactDOM.render(html`<${App} />`, document.getElementById('root'));
+</script>
+</body>
+</html>

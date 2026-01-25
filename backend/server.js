@@ -11,7 +11,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- Inicializa Firebase Admin ---
+// ========================
+// Inicializa Firebase Admin
+// ========================
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
@@ -20,7 +22,9 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// --- Inicializa Groq SDK ---
+// ========================
+// Inicializa Groq SDK
+// ========================
 const groq = new Groq({
   apiKey: process.env.GROQ_KEY,
 });
@@ -97,6 +101,67 @@ app.get("/usuarios", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: "Erro ao listar usuários" });
+  }
+});
+
+// ========================
+// ROTA PARA LISTAR SUGESTÕES (PAINEL ADMIN)
+// ========================
+app.get("/sugestoes", async (req, res) => {
+  try {
+    const snapshot = await db.collection("sugestoes")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const sugestoes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(sugestoes);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Erro ao listar sugestões" });
+  }
+});
+
+// ========================
+// ROTA PARA RESPONDER SUGESTÃO (ADMIN)
+// ========================
+app.post("/responder-sugestao", async (req, res) => {
+  try {
+    const { sugestaoId, resposta } = req.body;
+
+    if (!sugestaoId || !resposta) {
+      return res.status(400).json({ erro: "Faltando sugestaoId ou resposta" });
+    }
+
+    // Busca sugestão
+    const sugRef = db.collection("sugestoes").doc(sugestaoId);
+    const sugDoc = await sugRef.get();
+
+    if (!sugDoc.exists) {
+      return res.status(404).json({ erro: "Sugestão não encontrada" });
+    }
+
+    const sugestaoData = sugDoc.data();
+    const userId = sugestaoData.userId;
+
+    // 1️⃣ Salvar resposta na própria sugestão
+    await sugRef.update({
+      reply: resposta,
+      respondido: true,
+      respostaData: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 2️⃣ Salvar mensagem do admin para o usuário
+    await db.collection("mensagens").add({
+      de: "admin",
+      para: userId,
+      mensagem: resposta,
+      data: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ sucesso: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Erro ao responder sugestão" });
   }
 });
 

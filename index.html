@@ -331,42 +331,49 @@
              * Inicia a sincronização de dados em tempo real com o Firestore
              */
             const startDataSync = (sid) => {
-                setLoading(true);
-                
-                // Monitoramento de dados do usuário
-                const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-    if (s.exists()) {
-        const userData = { id: s.id, ...s.data() };
-        const isAdmin = userData.email.toLowerCase() === "davidbhmg147@gmail.com";
+  setLoading(true);
 
-        if (!isAdmin && userData.status !== 'paid') {
-            alert("Acesso Bloqueado.");
-            handleLogout();
-            return;
-        }
+  const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+    if (!s.exists()) return handleLogout();
 
-        setUser(userData);
+    const userData = { id: s.id, ...s.data() };
+    const isAdmin = userData.email?.toLowerCase() === "davidbhmg147@gmail.com";
 
-        // 🔥 AGORA SIM: sincroniza sugestões corretamente
-        let unsubSugg = () => {};
+    if (!isAdmin && userData.status !== 'paid') {
+      alert("Acesso Bloqueado.");
+      handleLogout();
+      return;
+    }
 
-        if (isAdmin) {
-            const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-            unsubSugg = onSnapshot(qs, (sugSnap) => {
-                setAdminSuggestions(sugSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            });
-        } else {
-            const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-            unsubSugg = onSnapshot(qsUser, (sugSnap) => {
-                const suggestions = sugSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-                setUserSuggestions(suggestions);
-                const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
-                setUnreadCount(unread);
-            });
-        }
-    } else handleLogout();
-});
+    setUser(userData);
 
+    // 🔥 Sync das sugestões
+    let unsubSugg = () => {};
+
+    if (isAdmin) {
+      const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+      unsubSugg = onSnapshot(qs, (snap) => {
+        setAdminSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+    } else {
+      const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+      unsubSugg = onSnapshot(qsUser, (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setUserSuggestions(list);
+      });
+    }
+
+    return () => unsubSugg();
+  });
+
+  const q = query(collection(db, "transactions"), where("userId", "==", sid));
+  const unsubTx = onSnapshot(q, (s) => {
+    setTransactions(s.docs.map(d => ({ id: d.id, ...d.data() })));
+    setLoading(false);
+  });
+
+  return () => { unsubUser(); unsubTx(); };
+};
 
             // Efeito para checar persistência de login ao carregar
             useEffect(() => {

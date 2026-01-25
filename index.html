@@ -7,7 +7,7 @@
     <title>Finanças</title>
     
     <!-- Configurações para Web App (PWA) e Favicons -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
     <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
@@ -397,7 +397,6 @@ const startDataSync = (sid) => {
 const handleAuth = async (e) => {
     if (e) e.preventDefault();
     
-    // Validação inicial
     if (!email || (!isRecovering && !pass)) {
         alert("Preencha os campos corretamente.");
         return;
@@ -406,16 +405,17 @@ const handleAuth = async (e) => {
     setAuthLoading(true);
     
     try {
-        // 'auth' e 'db' já foram inicializados no topo do script
-        const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+        const emailTrim = email.toLowerCase().trim();
+        // Gerar o ID do documento da mesma forma que está no seu Firestore
+        const safeId = emailTrim.replace(/[^a-z0-9]/g, '_');
         const userRef = doc(db, "users", safeId);
         const userSnap = await getDoc(userRef);
 
         // --- MODO: RECUPERAÇÃO DE SENHA ---
         if (isRecovering) {
             auth.languageCode = 'pt';
-            await sendPasswordResetEmail(auth, email.trim());
-            alert("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
+            await sendPasswordResetEmail(auth, emailTrim);
+            alert("E-mail de redefinição enviado!");
             setIsRecovering(false);
         } 
         
@@ -424,15 +424,14 @@ const handleAuth = async (e) => {
             if (userSnap.exists()) {
                 alert("Este e-mail já está cadastrado.");
             } else {
-                // Cria no Authentication
-                const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
-                // Salva no Firestore
+                const cred = await createUserWithEmailAndPassword(auth, emailTrim, pass);
                 await setDoc(userRef, {
                     uid: cred.user.uid,
-                    email: email.trim(),
-                    password: pass, // Senha em texto para o seu sistema de login legado
+                    email: emailTrim,
+                    password: pass, 
                     status: 'pending',
                     paid: false,
+                    isAdmin: "false", // Padrão para novos usuários
                     createdAt: serverTimestamp()
                 });
                 alert("Conta criada com sucesso!");
@@ -440,27 +439,28 @@ const handleAuth = async (e) => {
             }
         } 
         
-        // --- MODO: LOGIN COM SINCRONIZAÇÃO DE SENHA ---
+        // --- MODO: LOGIN ---
         else {
             try {
-                // 1. Tenta logar no Firebase Auth (valida a senha nova se tiver sido resetada)
-                await signInWithEmailAndPassword(auth, email.trim(), pass);
+                // 1. Autenticação oficial do Firebase
+                await signInWithEmailAndPassword(auth, emailTrim, pass);
                 
                 if (userSnap.exists()) {
                     const userData = userSnap.data();
 
-                    // 2. SINCRONIZAÇÃO: Se a senha digitada for diferente da que está no Firestore, atualiza o Firestore
+                    // 2. Sincronização de senha (opcional, mas corrigida)
                     if (userData.password !== pass) {
                         await updateDoc(userRef, { password: pass });
-                        console.log("Senha sincronizada no banco de dados.");
                     }
 
-                    // 3. Verificação de Acesso (Pagamento ou Admin)
-                    if (userData.paid || userData.status === 'paid' || email.toLowerCase() === 'niklaus') {
+                    // 3. Verificação de Acesso (AJUSTADO PARA O SEU E-MAIL REAL)
+                    const isNiklaus = emailTrim === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
+                    const hasAccess = userData.paid || userData.status === 'paid' || isNiklaus;
+
+                    if (hasAccess) {
                         const storage = keepConnected ? localStorage : sessionStorage;
                         storage.setItem('belaju_sid', safeId);
                         
-                        // Inicia sincronização de dados do app
                         if (typeof startDataSync === 'function') {
                             startDataSync(safeId);
                         } else {
@@ -474,12 +474,12 @@ const handleAuth = async (e) => {
                 }
             } catch (authErr) {
                 console.error("Erro no login:", authErr);
-                alert("E-mail ou senha incorretos. Se você redefiniu a senha, use a nova.");
+                alert("E-mail ou senha incorretos.");
             }
         }
     } catch (err) {
         console.error("Erro Geral:", err);
-        alert("Ocorreu um erro: " + err.message);
+        alert("Erro: " + err.message);
     } finally {
         setAuthLoading(false);
     }

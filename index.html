@@ -1526,7 +1526,9 @@ const handleAppShare = async () => {
 
                      {activeTab === 'settings' && (
   <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
-    <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
+    <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">
+      Ajustes e Perfil
+    </h3>
 
     {/* Conta Principal */}
     <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
@@ -1536,7 +1538,13 @@ const handleAppShare = async () => {
           <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
             <i className="fas fa-camera"></i>
           </div>
-          <input type="file" ref={fileInputPrincipalRef} className="hidden" accept="image/*" onChange={(e) => handlePhotoUpload(e, 'principal')} />
+          <input
+            type="file"
+            ref={fileInputPrincipalRef}
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => handlePhotoUpload(e, 'principal')}
+          />
         </div>
         <div>
           <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Principal</h4>
@@ -1544,12 +1552,14 @@ const handleAppShare = async () => {
         </div>
       </div>
       <div className="space-y-2">
-        <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
+        <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">
+          Nome Exibido
+        </label>
         <input
           type="text"
           className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-violet-500 transition-all"
           value={profileName}
-          onChange={e => setProfileName(e.target.value)}
+          onChange={(e) => setProfileName(e.target.value)}
         />
       </div>
     </div>
@@ -1562,20 +1572,30 @@ const handleAppShare = async () => {
           <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
             <i className="fas fa-camera"></i>
           </div>
-          <input type="file" ref={fileInputSecondaryRef} className="hidden" accept="image/*" onChange={(e) => handlePhotoUpload(e, 'secondary')} />
+          <input
+            type="file"
+            ref={fileInputSecondaryRef}
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => handlePhotoUpload(e, 'secondary')}
+          />
         </div>
         <div>
           <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Secundária</h4>
-          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Dependente / Investimentos</p>
+          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
+            Dependente / Investimentos
+          </p>
         </div>
       </div>
       <div className="space-y-2">
-        <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
+        <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">
+          Nome Exibido
+        </label>
         <input
           type="text"
           className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-emerald-500 transition-all"
           value={secondaryName}
-          onChange={e => setSecondaryName(e.target.value)}
+          onChange={(e) => setSecondaryName(e.target.value)}
         />
       </div>
     </div>
@@ -1595,7 +1615,11 @@ const handleAppShare = async () => {
         <button
           onClick={() => {
             if (navigator.share) {
-              navigator.share({ title: 'App Finanças', text: 'Estou usando este app para gerenciar minhas contas!', url: window.location.href });
+              navigator.share({
+                title: 'App Finanças',
+                text: 'Estou usando este app para gerenciar minhas contas!',
+                url: window.location.href,
+              });
             } else {
               navigator.clipboard.writeText(window.location.href);
               alert('Link de convite copiado!');
@@ -1614,7 +1638,9 @@ const handleAppShare = async () => {
       <div className="flex items-center gap-3">
         <i className="fas fa-comment-dots text-violet-500"></i>
         <h3 className="text-xs font-black text-white uppercase tracking-widest">
-          {user.email === 'davidbhmg147@gmail.com' ? 'Painel do Administrador (Niklaus)' : 'Sugestões para o Adm'}
+          {user.email === 'davidbhmg147@gmail.com'
+            ? 'Painel do Administrador (Niklaus)'
+            : 'Sugestões para o Adm'}
         </h3>
       </div>
 
@@ -1623,11 +1649,13 @@ const handleAppShare = async () => {
           {adminSuggestions.length === 0 ? (
             <p className="text-[10px] text-slate-500 text-center uppercase">Nenhuma sugestão nova.</p>
           ) : (
-            adminSuggestions.map(sug => (
+            adminSuggestions.map((sug) => (
               <div key={sug.id} className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
                 <div className="flex justify-between mb-2">
                   <span className="text-[8px] font-black text-violet-400 uppercase">{sug.userName || 'Usuário'}</span>
-                  <span className="text-[8px] text-slate-600">{sug.createdAt?.toDate ? new Date(sug.createdAt.toDate()).toLocaleDateString() : ''}</span>
+                  <span className="text-[8px] text-slate-600">
+                    {sug.createdAt?.toDate ? new Date(sug.createdAt.toDate()).toLocaleDateString() : ''}
+                  </span>
                 </div>
                 <p className="text-xs text-slate-300 mb-3">{sug.message}</p>
 
@@ -1664,7 +1692,7 @@ const handleAppShare = async () => {
         <div className="space-y-4">
           <textarea
             value={suggestionText}
-            onChange={e => setSuggestionText(e.target.value)}
+            onChange={(e) => setSuggestionText(e.target.value)}
             className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px] outline-none focus:border-violet-500 transition-all"
             placeholder="No que podemos melhorar o app?"
           ></textarea>
@@ -1679,21 +1707,21 @@ const handleAppShare = async () => {
       )}
     </div>
 
-    {/* Botões de Ações */}
+    {/* Botões */}
     <div className="pt-4 space-y-4">
       <button
         onClick={async () => {
           try {
-            await updateDoc(doc(db, "users", user.id), {
+            await updateDoc(doc(db, 'users', user.id), {
               appName: profileName,
               secondaryName: secondaryName,
               photoURL: profilePhoto,
               secondaryPhotoURL: secondaryPhoto,
-              soundEnabled: soundEnabled
+              soundEnabled: soundEnabled,
             });
-            alert("As configurações foram salvas com sucesso!");
+            alert('As configurações foram salvas com sucesso!');
           } catch (err) {
-            alert("Erro ao sincronizar dados com o servidor.");
+            alert('Erro ao sincronizar dados com o servidor.');
           }
         }}
         className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all"

@@ -830,24 +830,7 @@ const handleAppShare = async () => {
             /**
              * Compartilhamento do app (Web Share API)
              */
-            const handleAppShare = async () => {
-                const shareData = {
-                    title: 'GestorFinanceiro - Controle Financeiro Premium',
-                    text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link e garanta sua versão Premium com todas as funcionalidades liberadas:',
-                    url: window.location.href
-                };
-
-                try {
-                    if (navigator.share) {
-                        await navigator.share(shareData);
-                    } else {
-                        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-                        alert("Link de convite e informações de acesso copiados para a área de transferência!");
-                    }
-                } catch (err) {
-                    console.log('Error sharing:', err);
-                }
-            };
+            
 
             // Memoized: Transações filtradas para exibição atual
             const currentTransactions = useMemo(() => {

@@ -328,8 +328,8 @@ const startDataSync = (sid) => {
         if (s.exists()) {
             const userData = { id: s.id, ...s.data() };
             
-            // Verificação robusta de Admin
-            const isNiklaus = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com' || userData.id === 'niklaus';
+            // Verificação de Admin (E-mail ou isAdmin string "true")
+            const isNiklaus = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
             
             if (!isNiklaus && userData.status !== 'paid') {
                  alert("Acesso Bloqueado.");
@@ -344,42 +344,55 @@ const startDataSync = (sid) => {
             setSecondaryPhoto(userData.secondaryPhotoURL || '');
             setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
 
-            // --- INÍCIO DO MONITORAMENTO DE SUGESTÕES ---
-            // Chamamos aqui dentro para garantir que temos os dados do userData atualizados
+            // 2. Monitoramento de Sugestões (Dentro do unsubUser para garantir isNiklaus)
+            let qs;
             if (isNiklaus) {
-                // Para o ADMIN: Ver todas as sugestões do banco
-                const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-                const unsubSuggAdmin = onSnapshot(qs, (snap) => {
-                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    
-                    // IMPORTANTE: Atualize o estado que seu HTML usa para fazer o .map()
-                    setAdminSuggestions(list); 
-                    if (typeof setSuggestions === 'function') setSuggestions(list); 
-
-                    // Contagem de notificações: Mensagens sem resposta ou com status unread
-                    const unreadMessages = list.filter(sug => !sug.reply || sug.status === 'unread').length;
-                    setUnreadCount(unreadMessages);
-                });
-                // Guardar para limpar depois se necessário
-                window.unsubSugg = unsubSuggAdmin;
+                // Admin vê tudo
+                qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
             } else {
-                // Para o USUÁRIO COMUM: Ver apenas as próprias sugestões
-                const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-                const unsubSuggUser = onSnapshot(qsUser, (snap) => {
-                    const suggestionsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setUserSuggestions(suggestionsList);
-                    
-                    // Notificação para o usuário: Niklaus respondeu e ele ainda não abriu
-                    const unread = suggestionsList.filter(sug => sug.reply && sug.replyViewed === false).length;
-                    setUnreadCount(unread);
-                });
-                window.unsubSugg = unsubSuggUser;
+                // Usuário vê só as dele
+                qs = query(collection(db, "suggestions"), where("userId", "==", sid));
             }
+
+            const unsubSugg = onSnapshot(qs, (snap) => {
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                // IMPORTANTE: Atualiza o estado que o seu HTML usa (verifique o nome correto)
+                setAdminSuggestions(list); 
+                setUserSuggestions(list); 
+                
+                // Se o seu HTML usa uma variável chamada 'suggestions', adicione a linha abaixo:
+                // setSuggestions(list); 
+
+                // Lógica de Notificações
+                if (isNiklaus) {
+                    setUnreadCount(list.filter(sug => !sug.reply || sug.status === 'unread').length);
+                } else {
+                    setUnreadCount(list.filter(sug => sug.reply && sug.replyViewed === false).length);
+                }
+            });
+
+            // Guardar para limpeza
+            window.activeUnsubSugg = unsubSugg;
         } else {
             handleLogout();
         }
     });
 
+    // 3. Monitoramento das transações
+    const q = query(collection(db, "transactions"), where("userId", "==", sid));
+    const unsubTx = onSnapshot(q, (s) => {
+        const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
+        setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+        setLoading(false); // Só tira o loading aqui
+    });
+
+    return () => { 
+        unsubUser(); 
+        unsubTx(); 
+        if (window.activeUnsubSugg) window.activeUnsubSugg(); 
+    };
+};
     // 2. Monitoramento das transações
     const q = query(collection(db, "transactions"), where("userId", "==", sid));
     const unsubTx = onSnapshot(q, (s) => {

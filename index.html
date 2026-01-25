@@ -749,7 +749,6 @@ const sendSuggestion = async () => {
   if (!suggestionText.trim()) return;
 
   setSendingSuggestion(true);
-
   try {
     await addDoc(collection(db, "suggestions"), {
       userId: user.id,
@@ -757,14 +756,13 @@ const sendSuggestion = async () => {
       message: suggestionText.trim(),
       createdAt: serverTimestamp()
     });
-
     setSuggestionText('');
   } catch (e) {
     alert("Erro ao enviar sugestão");
   }
-
   setSendingSuggestion(false);
 };
+
 
 
 // Função exclusiva para o Niklaus responder

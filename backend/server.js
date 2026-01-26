@@ -164,6 +164,29 @@ app.post("/responder-sugestao", async (req, res) => {
     res.status(500).json({ erro: "Erro ao responder sugestão" });
   }
 });
+// POST /mensagem-para-usuario
+app.post("/mensagem-para-usuario", async (req, res) => {
+  try {
+    const { userId, mensagem } = req.body;
+
+    if (!userId || !mensagem) {
+      return res.status(400).json({ erro: "Faltando userId ou mensagem" });
+    }
+
+    // Salva a mensagem para o usuário
+    await db.collection("mensagens").add({
+      de: "admin",
+      para: userId,
+      mensagem,
+      data: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ sucesso: true, msg: "Mensagem enviada ao usuário!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Erro ao enviar mensagem" });
+  }
+});
 
 // ========================
 // ROTA TESTE

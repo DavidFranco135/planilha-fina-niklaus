@@ -1738,17 +1738,24 @@ const handleAppShare = async () => {
   onClick=${async () => {
     try {
       console.log("Iniciando salvamento para ID:", user.id);
-      
-      await setDoc(doc(db, "users", user.id), { 
-        appName: profileName, 
-        secondaryName: secondaryName, 
-        photoURL: profilePhoto,
-        secondaryPhotoURL: secondaryPhoto,
-        soundEnabled: soundEnabled
-      }, { merge: true });
+
+      await setDoc(
+        doc(db, "users", user.id),
+        { 
+          appName: profileName, 
+          secondaryName: secondaryName, 
+          photoURL: profilePhoto,
+          secondaryPhotoURL: secondaryPhoto,
+          soundEnabled: soundEnabled,
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
 
       alert("As configurações foram salvas com sucesso!");
-      window.location.reload();
+      // ❌ NÃO recarrega a página
+      // window.location.reload();  <-- REMOVIDO
+
     } catch (err) {
       console.error("Erro detalhado ao salvar:", err);
       alert("Erro ao sincronizar dados com o servidor.");
@@ -1758,6 +1765,7 @@ const handleAppShare = async () => {
 >
   Sincronizar Alterações
 </button>
+
 
 
                 <button onClick=${handleClearFinancialData} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-600/30 active:scale-95 hover:bg-rose-500 transition-all">

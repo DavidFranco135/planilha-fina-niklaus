@@ -996,114 +996,216 @@ const handleAppShare = async () => {
                 docPDF.save(`financas-${title}-${new Date().getTime()}.pdf`);
             };
 
-            // Efeito para renderizar gráficos
-            useEffect(() => {
-                if (activeTab === 'analytics') {
-                    const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
-                    const ctxBar = document.getElementById('analyticsBarChart');
-                    
-                    if (ctxDoughnut) {
-                        if (doughnutChartRef.current) doughnutChartRef.current.destroy();
-                        
-                        const hasData = totals.inc > 0 || totals.exp > 0;
+          // Efeito para renderizar gráficos
+useEffect(() => {
+    if (activeTab === 'analytics') {
+        const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
+        const ctxBar = document.getElementById('analyticsBarChart');
+        const ctxLineSaldo = document.getElementById('analyticsLineSaldo');
+        const ctxLineFlow = document.getElementById('analyticsLineFlow');
+        const ctxChannelBar = document.getElementById('analyticsChannelBar');
 
-                        doughnutChartRef.current = new Chart(ctxDoughnut, {
-                            type: 'doughnut',
-                            data: {
-                                labels: ['Entradas', 'Saídas'],
-                                datasets: [{
-                                    data: hasData ? [totals.inc, totals.exp] : [1, 1],
-                                    backgroundColor: hasData ? ['#10b981', '#f43f5e'] : ['#1e293b', '#1e293b'],
-                                    hoverOffset: 12,
-                                    borderWidth: 0,
-                                    borderRadius: 5
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                cutout: '70%',
-                                plugins: {
-                                    legend: {
-                                        display: hasData,
-                                        position: 'bottom',
-                                        labels: { color: '#94a3b8', font: { weight: 'bold', size: 10 }, padding: 20 }
-                                    }
-                                }
-                            }
-                        });
-                    }
+        // === Doughnut Chart: Entradas vs Saídas ===
+        if (ctxDoughnut) {
+            if (doughnutChartRef.current) doughnutChartRef.current.destroy();
 
-                    if (ctxBar) {
-                        if (barChartRef.current) barChartRef.current.destroy();
+            const hasData = totals.inc > 0 || totals.exp > 0;
 
-                        const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
-                        const methodLabels = ['PIX', 'Crédito', 'Débito', 'Dinheiro'];
-                        const methodColors = {
-                            'PIX': '#10b981',
-                            'CREDITO': '#8b5cf6',
-                            'DEBITO': '#0ea5e9',
-                            'DINHEIRO': '#f59e0b'
-                        };
-
-                        const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).length);
-                        const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === m).length);
-
-                        barChartRef.current = new Chart(ctxBar, {
-                            type: 'bar',
-                            data: {
-                                labels: methodLabels,
-                                datasets: [
-                                    {
-                                        label: 'Qtd Entradas',
-                                        data: incomeCounts,
-                                        backgroundColor: methods.map(m => methodColors[m] + 'CC'),
-                                        borderColor: methods.map(m => methodColors[m]),
-                                        borderWidth: 2,
-                                        borderRadius: 6
-                                    },
-                                    {
-                                        label: 'Qtd Saídas',
-                                        data: expenseCounts,
-                                        backgroundColor: methods.map(m => methodColors[m] + '66'),
-                                        borderColor: methods.map(m => methodColors[m]),
-                                        borderWidth: 1,
-                                        borderRadius: 6,
-                                        borderDash: [5, 5]
-                                    }
-                                ]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        ticks: { color: '#64748b', stepSize: 1, font: { size: 10 } },
-                                        grid: { color: '#1e293b' }
-                                    },
-                                    x: {
-                                        ticks: { color: '#94a3b8', font: { size: 11, weight: 'bold' } },
-                                        grid: { display: false }
-                                    }
-                                },
-                                plugins: {
-                                    legend: {
-                                        position: 'top',
-                                        labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true }
-                                    },
-                                    tooltip: {
-                                        backgroundColor: '#0f172a',
-                                        titleFont: { size: 12 },
-                                        bodyFont: { size: 11 },
-                                        padding: 12,
-                                        cornerRadius: 12
-                                    }
-                                }
-                            }
-                        });
+            doughnutChartRef.current = new Chart(ctxDoughnut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Entradas', 'Saídas'],
+                    datasets: [{
+                        data: hasData ? [totals.inc, totals.exp] : [1, 1],
+                        backgroundColor: hasData ? ['#10b981', '#f43f5e'] : ['#1e293b', '#1e293b'],
+                        hoverOffset: 12,
+                        borderWidth: 0,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            display: hasData,
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', font: { weight: 'bold', size: 10 }, padding: 20 }
+                        }
                     }
                 }
-            }, [activeTab, currentTransactions, totals]);
+            });
+        }
+
+        // === Bar Chart: Volume por Canal ===
+        if (ctxBar) {
+            if (barChartRef.current) barChartRef.current.destroy();
+
+            const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
+            const methodLabels = ['PIX', 'Crédito', 'Débito', 'Dinheiro'];
+            const methodColors = {
+                'PIX': '#10b981',
+                'CREDITO': '#8b5cf6',
+                'DEBITO': '#0ea5e9',
+                'DINHEIRO': '#f59e0b'
+            };
+
+            const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).length);
+            const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === m).length);
+
+            barChartRef.current = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: methodLabels,
+                    datasets: [
+                        {
+                            label: 'Qtd Entradas',
+                            data: incomeCounts,
+                            backgroundColor: methods.map(m => methodColors[m] + 'CC'),
+                            borderColor: methods.map(m => methodColors[m]),
+                            borderWidth: 2,
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Qtd Saídas',
+                            data: expenseCounts,
+                            backgroundColor: methods.map(m => methodColors[m] + '66'),
+                            borderColor: methods.map(m => methodColors[m]),
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#64748b', stepSize: 1, font: { size: 10 } },
+                            grid: { color: '#1e293b' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8', font: { size: 11, weight: 'bold' } },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { size: 12 },
+                            bodyFont: { size: 11 },
+                            padding: 12,
+                            cornerRadius: 12
+                        }
+                    }
+                }
+            });
+        }
+
+        // === Line Chart: Saldo Acumulado ===
+        if (ctxLineSaldo) {
+            if (lineSaldoChartRef.current) lineSaldoChartRef.current.destroy();
+
+            const sortedTransactions = [...currentTransactions].sort((a, b) => a.date - b.date);
+            let acc = 0;
+            const saldoData = sortedTransactions.map(t => {
+                acc += t.type === 'INCOME' ? t.amount : -t.amount;
+                return acc;
+            });
+            const labels = sortedTransactions.map(t => new Date(t.date).toLocaleDateString());
+
+            lineSaldoChartRef.current = new Chart(ctxLineSaldo, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Saldo Acumulado',
+                        data: saldoData,
+                        borderColor: '#8b5cf6',
+                        backgroundColor: '#8b5cf6AA',
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true, labels: { color: '#94a3b8' } } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                        y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+                    }
+                }
+            });
+        }
+
+        // === Line Chart: Fluxo de Entradas e Saídas ===
+        if (ctxLineFlow) {
+            if (lineFlowChartRef.current) lineFlowChartRef.current.destroy();
+
+            const sorted = [...currentTransactions].sort((a, b) => a.date - b.date);
+            const labelsFlow = sorted.map(t => new Date(t.date).toLocaleDateString());
+            const incomeFlow = sorted.map(t => t.type === 'INCOME' ? t.amount : 0);
+            const expenseFlow = sorted.map(t => t.type === 'EXPENSE' ? t.amount : 0);
+
+            lineFlowChartRef.current = new Chart(ctxLineFlow, {
+                type: 'line',
+                data: {
+                    labels: labelsFlow,
+                    datasets: [
+                        { label: 'Entradas', data: incomeFlow, borderColor: '#10b981', backgroundColor: '#10b98144', tension: 0.3, fill: true, pointRadius: 2 },
+                        { label: 'Saídas', data: expenseFlow, borderColor: '#f43f5e', backgroundColor: '#f43f5e44', tension: 0.3, fill: true, pointRadius: 2 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                        y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+                    }
+                }
+            });
+        }
+
+        // === Bar Chart: Volume por Canal Detalhado ===
+        if (ctxChannelBar) {
+            if (channelBarChartRef.current) channelBarChartRef.current.destroy();
+
+            const channels = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
+            const channelLabels = channels.map(c => c.charAt(0) + c.slice(1).toLowerCase());
+            const incomeByChannel = channels.map(c => currentTransactions.filter(t => t.type === 'INCOME' && t.method === c).reduce((a,b) => a + b.amount, 0));
+            const expenseByChannel = channels.map(c => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === c).reduce((a,b) => a + b.amount, 0));
+            const colors = ['#10b981', '#8b5cf6', '#0ea5e9', '#f59e0b'];
+
+            channelBarChartRef.current = new Chart(ctxChannelBar, {
+                type: 'bar',
+                data: {
+                    labels: channelLabels,
+                    datasets: [
+                        { label: 'Entradas (R$)', data: incomeByChannel, backgroundColor: colors.map(c => c + 'CC'), borderColor: colors, borderWidth: 1 },
+                        { label: 'Saídas (R$)', data: expenseByChannel, backgroundColor: colors.map(c => c + '66'), borderColor: colors, borderWidth: 1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+                        y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+                    }
+                }
+            });
+        }
+    }
+}, [activeTab, currentTransactions, totals]);
+
 
             // Tela de Carregamento Inicial
             if (loading) return html`<div className="h-screen flex items-center justify-center bg-slate-950"><div className="loader w-10 h-10 border-4 border-slate-800 rounded-full"></div></div>`;

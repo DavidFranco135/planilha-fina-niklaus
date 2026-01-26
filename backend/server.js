@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
-import admin from "firebase-admin";
 import dotenv from "dotenv";
+import Groq from "groq-sdk";
+import kiwifyWebhook from './kiwify-webhook.js';
+import admin from "firebase-admin";
 
 dotenv.config();
 
@@ -9,7 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Inicializa Firebase Admin
+// --- Inicializa Firebase Admin ---
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
@@ -18,31 +20,50 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// =====================
-// Rotas existentes (ex: Kiwify webhook)
-// =====================
-app.post("/kiwify-webhook", async (req, res) => {
-  const data = req.body?.order || req.body;
-
-  console.log("Webhook recebido:", JSON.stringify(data, null, 2));
-
-  // Aqui você já salva a sugestão ou compra no Firestore
-  // Exemplo de sugestão:
-  if (data.sugestao) {
-    await db.collection("sugestoes").add({
-      userId: data.userId,
-      mensagem: data.sugestao,
-      data: admin.firestore.FieldValue.serverTimestamp(),
-      respondido: false
-    });
-  }
-
-  res.status(200).send("Webhook recebido!");
+// --- Inicializa Groq SDK ---
+const groq = new Groq({
+  apiKey: process.env.GROQ_KEY,
 });
 
-// =====================
-// Nova rota: enviar mensagem de admin para usuário
-// =====================
+// ========================
+// ROTA AI NIKLAUS
+// ========================
+const temasPiadas = ["investimentos", "bancos", "boletos", "cartão de crédito", "cripto", "inflação", "aposentadoria"];
+
+app.post("/gemini", async (req, res) => {
+  try {
+    const { mensagem, nomeUsuario } = req.body;
+    const temaAleatorio = temasPiadas[Math.floor(Math.random() * temasPiadas.length)];
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `Você é Niklaus, mentor financeiro. Nome do usuário: ${nomeUsuario || 'Amigo'}. 
+          Apresente-se, dê 3 dicas curtas com emojis e conte uma piada inédita sobre ${temaAleatorio}. 
+          Seja direto e rápido.`
+        },
+        { role: "user", content: mensagem }
+      ],
+      model: "llama-3.1-8b-instant", 
+      temperature: 0.9,
+    });
+
+    res.json({ resposta: completion.choices[0]?.message?.content });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Niklaus deu uma saidinha." });
+  }
+});
+
+// ========================
+// WEBHOOK KIWIFY
+// ========================
+app.post("/webhook-kiwify", kiwifyWebhook);
+
+// ========================
+// ROTA PARA ENVIAR MENSAGEM DO ADMIN
+// ========================
 app.post("/enviar-mensagem", async (req, res) => {
   try {
     const { userId, mensagem } = req.body;
@@ -65,9 +86,9 @@ app.post("/enviar-mensagem", async (req, res) => {
   }
 });
 
-// =====================
-// Rota opcional: listar usuários (para painel admin)
-// =====================
+// ========================
+// ROTA PARA LISTAR USUÁRIOS (PAINEL ADMIN)
+// ========================
 app.get("/usuarios", async (req, res) => {
   try {
     const snapshot = await db.collection("users").get();
@@ -79,10 +100,13 @@ app.get("/usuarios", async (req, res) => {
   }
 });
 
-// =====================
-// Inicia servidor
-// =====================
+// ========================
+// ROTA TESTE
+// ========================
+app.get("/", (req, res) => res.send("Servidor do Niklaus está Online! 🚀"));
+
+// ========================
+// INICIA SERVIDOR
+// ========================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));

@@ -1734,9 +1734,11 @@ const handleAppShare = async () => {
 
             
             <div className="pt-4 space-y-4">
-                <button
-  onClick={async () => {
+ <button
+  onClick=${async () => {
     try {
+      console.log("Iniciando salvamento para ID:", user.id);
+      
       await setDoc(doc(db, "users", user.id), { 
         appName: profileName, 
         secondaryName: secondaryName, 
@@ -1748,7 +1750,7 @@ const handleAppShare = async () => {
       alert("As configurações foram salvas com sucesso!");
       window.location.reload();
     } catch (err) {
-      console.error("Erro ao salvar:", err);
+      console.error("Erro detalhado ao salvar:", err);
       alert("Erro ao sincronizar dados com o servidor.");
     }
   }}

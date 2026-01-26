@@ -1088,6 +1088,22 @@ useEffect(() => {
       options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
     });
   }
+  // ===== 📅 FILTRO POR MÊS/ANO =====
+  const filteredMonths = selectedMonth
+    ? labelsMonths.filter(m => m === selectedMonth)
+    : labelsMonths;
+
+  // ===== 📊 COMPARAÇÃO COM MÊS ANTERIOR =====
+  if (filteredMonths.length >= 1) {
+    const current = filteredMonths.at(-1);
+    const prev = labelsMonths[labelsMonths.indexOf(current) - 1];
+
+    if (prev && months[prev] && months[current]) {
+      const incDiff = ((months[current].inc - months[prev].inc) / (months[prev].inc || 1)) * 100;
+      const expDiff = ((months[current].exp - months[prev].exp) / (months[prev].exp || 1)) * 100;
+      setComparison({ inc: incDiff, exp: expDiff });
+    }
+  }
 
   // ===== BAR VALOR POR CANAL =====
   const ctxCanal = document.getElementById('analyticsChannelBar');

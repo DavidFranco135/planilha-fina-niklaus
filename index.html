@@ -1734,27 +1734,29 @@ const handleAppShare = async () => {
 
             
             <div className="pt-4 space-y-4">
-                <button onClick=${async () => {
+                <button
+  onClick={async () => {
     try {
-        // Trocamos updateDoc por setDoc para garantir que o registro seja criado/atualizado
-        await setDoc(doc(db, "users", user.id), { 
-            appName: profileName, 
-            secondaryName: secondaryName, 
-            photoURL: profilePhoto,
-            secondaryPhotoURL: secondaryPhoto,
-            soundEnabled: soundEnabled
-        }, { merge: true }); // O merge é fundamental para não apagar outros dados do usuário
-        
-        alert("As configurações foram salvas com sucesso!");
-        // Opcional: recarregar para garantir que a tela mostre o novo nome
-        window.location.reload(); 
+      await setDoc(doc(db, "users", user.id), { 
+        appName: profileName, 
+        secondaryName: secondaryName, 
+        photoURL: profilePhoto,
+        secondaryPhotoURL: secondaryPhoto,
+        soundEnabled: soundEnabled
+      }, { merge: true });
+
+      alert("As configurações foram salvas com sucesso!");
+      window.location.reload();
     } catch (err) {
-        console.error("Erro ao salvar:", err);
-        alert("Erro ao sincronizar dados com o servidor.");
+      console.error("Erro ao salvar:", err);
+      alert("Erro ao sincronizar dados com o servidor.");
     }
-}} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">
-    Sincronizar Alterações
+  }}
+  className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all"
+>
+  Sincronizar Alterações
 </button>
+
 
                 <button onClick=${handleClearFinancialData} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-600/30 active:scale-95 hover:bg-rose-500 transition-all">
                     <i className="fas fa-eraser mr-2"></i> Limpar Dados Financeiros

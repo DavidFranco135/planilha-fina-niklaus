@@ -244,144 +244,176 @@
          * Componente Principal da Aplicação
          */
         const App = () => {
-            // Estados Principais de Usuário e UI
-            const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const [activeTab, setActiveTab] = useState('dashboard');
-            const [transactions, setTransactions] = useState([]);
-            const [showModal, setShowModal] = useState(false);
-            const [editingId, setEditingId] = useState(null);
-            
-            // Filtros de Visualização
-            const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
-            const [typeFilter, setTypeFilter] = useState('ALL');
-            const [methodFilter, setMethodFilter] = useState('ALL');
-            const [showValues, setShowValues] = useState(true);
-            const [soundEnabled, setSoundEnabled] = useState(true);
-            
-            // Modos de Balanço (Mensal vs Acumulado/Personalizado)
-            const [balanceMode, setBalanceMode] = useState('MONTHLY');
-            const [accumStart, setAccumStart] = useState('');
-            const [accumEnd, setAccumEnd] = useState('');
-            const [showCustomPeriod, setShowCustomPeriod] = useState(false);
+    // Estados Principais de Usuário e UI
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [transactions, setTransactions] = useState([]);
+    const [showModal, setShowModal] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    
+    // Estados do Painel Admin (ADICIONADOS PARA CORREÇÃO)
+    const [adminTab, setAdminTab] = useState('inbox'); 
+    const [allUsers, setAllUsers] = useState([]); 
+    const [allMessagesHistory, setAllMessagesHistory] = useState([]);
 
-            // Estados da IA
-            const [aiAdvice, setAiAdvice] = useState('');
-            const [aiLoading, setAiLoading] = useState(false);
-            const [showAiModal, setShowAiModal] = useState(false);
+    // Filtros de Visualização
+    const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
+    const [typeFilter, setTypeFilter] = useState('ALL');
+    const [methodFilter, setMethodFilter] = useState('ALL');
+    const [showValues, setShowValues] = useState(true);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    
+    // Modos de Balanço
+    const [balanceMode, setBalanceMode] = useState('MONTHLY');
+    const [accumStart, setAccumStart] = useState('');
+    const [accumEnd, setAccumEnd] = useState('');
+    const [showCustomPeriod, setShowCustomPeriod] = useState(false);
 
-            // Referências de UI
-            const fileInputPrincipalRef = useRef(null);
-            const fileInputSecondaryRef = useRef(null);
-            const notificationDropdownRef = useRef(null);
-            const doughnutChartRef = useRef(null);
-            const barChartRef = useRef(null);
+    // Estados da IA
+    const [aiAdvice, setAiAdvice] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [showAiModal, setShowAiModal] = useState(false);
 
-            // Estado para nova transação
-            const [newTx, setNewTx] = useState({ 
-                description: '', amount: '', type: 'INCOME', 
-                date: new Date().toISOString().split('T')[0],
-                method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
+    // Referências de UI
+    const fileInputPrincipalRef = useRef(null);
+    const fileInputSecondaryRef = useRef(null);
+    const notificationDropdownRef = useRef(null);
+    const doughnutChartRef = useRef(null);
+    const barChartRef = useRef(null);
+
+    // Estado para nova transação
+    const [newTx, setNewTx] = useState({ 
+        description: '', amount: '', type: 'INCOME', 
+        date: new Date().toISOString().split('T')[0],
+        method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
+    });
+
+    // Estados de Autenticação
+    const [email, setEmail] = useState('');
+    const [pass, setPass] = useState('');
+    const [showPass, setShowPass] = useState(false);
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [isRecovering, setIsRecovering] = useState(false);
+    const [authLoading, setAuthLoading] = useState(false);
+    const [keepConnected, setKeepConnected] = useState(true);
+
+    // Perfil das Contas
+    const [profileName, setProfileName] = useState('');
+    const [secondaryName, setSecondaryName] = useState('');
+    const [profilePhoto, setProfilePhoto] = useState('');
+    const [secondaryPhoto, setSecondaryPhoto] = useState('');
+
+    // Controle de visualização de conta secundária no extrato
+    const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
+
+    // Sugestões e Notificações
+    const [suggestionText, setSuggestionText] = useState('');
+    const [sendingSuggestion, setSendingSuggestion] = useState(false);
+    const [userSuggestions, setUserSuggestions] = useState([]);
+    const [adminSuggestions, setAdminSuggestions] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showNotificationList, setShowNotificationList] = useState(false);
+
+    const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'davidbhmg147@gmail.com', [user]);
+
+    // Funções de feedback sonoro
+    const playMoneySfx = () => {
+        if (soundEnabled) {
+            bellSound.currentTime = 0;
+            bellSound.play().catch(e => console.log('Audio play blocked'));
+        }
+    };
+
+    const playTrashSfx = () => {
+        if (soundEnabled) {
+            trashSound.currentTime = 0;
+            trashSound.play().catch(e => console.log('Audio play blocked'));
+        }
+    };
+
+    // FUNÇÃO PARA ENVIAR MENSAGEM DIRETA (ADMIN)
+    const sendDirectMessage = async (userId, msg) => {
+        try {
+            const response = await fetch('https://SUA-URL-DO-BACKEND.com/enviar-mensagem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, mensagem: msg })
             });
+            if (response.ok) {
+                alert("Mensagem enviada com sucesso!");
+            }
+        } catch (err) {
+            alert("Erro ao conectar com o servidor.");
+        }
+    };
 
-            // Estados de Autenticação
-            const [email, setEmail] = useState('');
-            const [pass, setPass] = useState('');
-            const [showPass, setShowPass] = useState(false);
-            const [isRegistering, setIsRegistering] = useState(false);
-            const [isRecovering, setIsRecovering] = useState(false);
-            const [authLoading, setAuthLoading] = useState(false);
-            const [keepConnected, setKeepConnected] = useState(true);
+    /**
+     * Inicia a sincronização de dados em tempo real com o Firestore
+     */
+    const startDataSync = (sid) => {
+        setLoading(true);
 
-            // Perfil das Contas (Principal e Secundária)
-            const [profileName, setProfileName] = useState('');
-            const [secondaryName, setSecondaryName] = useState('');
-            const [profilePhoto, setProfilePhoto] = useState('');
-            const [secondaryPhoto, setSecondaryPhoto] = useState('');
+        let unsubSugg = () => {};
+        let unsubUsersList = () => {}; // Para o dropdown do admin
 
-            // Controle de visualização de conta secundária no extrato
-            const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
+        const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+            if (!s.exists()) return handleLogout();
 
-            // Sugestões e Notificações
-            const [suggestionText, setSuggestionText] = useState('');
-            const [sendingSuggestion, setSendingSuggestion] = useState(false);
-            const [userSuggestions, setUserSuggestions] = useState([]);
-            const [adminSuggestions, setAdminSuggestions] = useState([]);
-            const [unreadCount, setUnreadCount] = useState(0);
-            const [showNotificationList, setShowNotificationList] = useState(false);
+            const userData = { id: s.id, ...s.data() };
+            const adminEmail = "davidbhmg147@gmail.com";
+            const isUserAdmin = userData.email?.toLowerCase() === adminEmail;
 
-            const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'niklaus', [user]);
+            if (!isUserAdmin && userData.status !== 'paid') {
+                alert("Acesso Bloqueado.");
+                handleLogout();
+                return;
+            }
 
-            // Funções de feedback sonoro
-            const playMoneySfx = () => {
-                if (soundEnabled) {
-                    bellSound.currentTime = 0;
-                    bellSound.play().catch(e => console.log('Audio play blocked'));
-                }
-            };
+            setUser(userData);
+            unsubSugg();
 
-            const playTrashSfx = () => {
-                if (soundEnabled) {
-                    trashSound.currentTime = 0;
-                    trashSound.play().catch(e => console.log('Audio play blocked'));
-                }
-            };
+            if (isUserAdmin) {
+                // Listener de todas as sugestões para o Admin
+                const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+                unsubSugg = onSnapshot(qs, (snap) => {
+                    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAdminSuggestions(docs);
+                    setAllMessagesHistory(docs); // Alimenta o histórico com tudo
+                });
 
-            /**
-             * Inicia a sincronização de dados em tempo real com o Firestore
-             */
-            const startDataSync = (sid) => {
-  setLoading(true);
+                // Listener de todos os usuários para o Dropdown
+                const qu = query(collection(db, "users"));
+                unsubUsersList = onSnapshot(qu, (snap) => {
+                    setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
 
-  let unsubSugg = () => {};
+            } else {
+                // Listener apenas das sugestões do usuário comum
+                const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+                unsubSugg = onSnapshot(qsUser, (snap) => {
+                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setUserSuggestions(list);
+                    const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
+                    setUnreadCount(unread);
+                });
+            }
+        });
 
-  const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-    if (!s.exists()) return handleLogout();
+        const q = query(collection(db, "transactions"), where("userId", "==", sid));
+        const unsubTx = onSnapshot(q, (s) => {
+            const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
+            setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+            setLoading(false);
+        });
 
-    const userData = { id: s.id, ...s.data() };
-    const isAdmin = userData.email?.toLowerCase() === "davidbhmg147@gmail.com";
-
-    if (!isAdmin && userData.status !== 'paid') {
-      alert("Acesso Bloqueado.");
-      handleLogout();
-      return;
-    }
-
-    setUser(userData);
-
-    // 👉 cancela listener antigo antes de criar outro
-    unsubSugg();
-
-    if (isAdmin) {
-      const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-      unsubSugg = onSnapshot(qs, (snap) => {
-        setAdminSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      });
-    } else {
-      const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-      unsubSugg = onSnapshot(qsUser, (snap) => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(list);
-        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
-        setUnreadCount(unread);
-      });
-    }
-  });
-
-  const q = query(collection(db, "transactions"), where("userId", "==", sid));
-  const unsubTx = onSnapshot(q, (s) => {
-    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-    setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    setLoading(false);
-  });
-
-  return () => {
-    unsubUser();
-    unsubTx();
-    unsubSugg();
-  };
-};
-
+        return () => {
+            unsubUser();
+            unsubTx();
+            unsubSugg();
+            unsubUsersList();
+        };
+    };
 
 
             // Efeito para checar persistência de login ao carregar
@@ -1527,11 +1559,12 @@ const handleAppShare = async () => {
                             </div>
                         ` : ''}
 
-                     ${activeTab === 'settings' ? html`
+   ${activeTab === 'settings' ? html`
     <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
         <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
         
         <div className="space-y-6">
+           
             <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                 <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
                     <div className="relative cursor-pointer group" onClick=${() => fileInputPrincipalRef.current.click()}>
@@ -1552,6 +1585,7 @@ const handleAppShare = async () => {
                 </div>
             </div>
 
+            
             <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                 <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
                     <div className="relative cursor-pointer group" onClick=${() => fileInputSecondaryRef.current.click()}>
@@ -1572,6 +1606,7 @@ const handleAppShare = async () => {
                 </div>
             </div>
 
+           
             <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-8 rounded-[2.5rem] shadow-2xl text-white relative overflow-hidden group">
                 <div className="relative z-10">
                     <div className="flex items-center gap-4 mb-4">
@@ -1589,95 +1624,143 @@ const handleAppShare = async () => {
                         } else {
                             alert('Link de convite copiado!');
                         }
-                    }} className="w-full bg-violet-600 text-whit py-5 rounded-2xl text-[10px] font-black uppercase hover:bg-slate-100 transition-all shadow-xl shadow-black/20">
+                    }} className="w-full bg-violet-600 text-white py-5 rounded-2xl text-[10px] font-black uppercase hover:bg-slate-100 transition-all shadow-xl shadow-black/20">
                         Enviar Convite
                     </button>
                 </div>
                 <i className="fas fa-share-alt absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12 transition-transform duration-500 group-hover:rotate-0"></i>
             </div>
 
+            
             <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
-  <div className="flex items-center gap-3">
-    <i className="fas fa-comment-dots text-violet-500"></i>
-    <h3 className="text-xs font-black text-white uppercase tracking-widest">
-      ${user.email === 'davidbhmg147@gmail.com'
-        ? 'Painel do Administrador (Niklaus)'
-        : 'Sugestões para o Adm'}
-    </h3>
-  </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <i className="fas fa-comment-dots text-violet-500"></i>
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest">
+                            ${user.email === 'davidbhmg147@gmail.com' ? 'Painel Admin (Niklaus)' : 'Sugestões para o Adm'}
+                        </h3>
+                    </div>
+                </div>
 
-  ${user.email === 'davidbhmg147@gmail.com' ? html`
-    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-      ${adminSuggestions.length === 0 
-        ? html`<p className="text-[10px] text-slate-500 text-center uppercase">Nenhuma sugestão nova.</p>` 
-        : ''}
+                ${user.email === 'davidbhmg147@gmail.com' ? html`
+                    {/* Menu de Abas do Admin */}
+                    <div className="flex bg-slate-950 p-1 rounded-xl gap-1">
+                        <button onClick=${() => setAdminTab('inbox')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'inbox' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Sugestões</button>
+                        <button onClick=${() => setAdminTab('direct')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'direct' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Enviar Direto</button>
+                        <button onClick=${() => setAdminTab('history')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'history' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Histórico</button>
+                    </div>
 
-      ${adminSuggestions.map(sug => html`
-        <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
-          <div className="flex justify-between mb-2">
-            <span className="text-[8px] font-black text-violet-400 uppercase">
-              ${sug.userName || 'Usuário'}
-            </span>
-            <span className="text-[8px] text-slate-600">
-              ${sug.createdAt?.toDate ? new Date(sug.createdAt.toDate()).toLocaleDateString() : ''}
-            </span>
-          </div>
-
-          <p className="text-xs text-slate-300 mb-3">${sug.message}</p>
-
-          ${sug.reply ? html`
-            <div className="mt-2 p-2 bg-violet-600/10 rounded-xl border border-violet-600/20">
-              <p className="text-[10px] text-violet-400 font-bold">Sua resposta: ${sug.reply}</p>
+                    <div className="mt-4">
+                        ${adminTab === 'inbox' ? html`
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                                ${adminSuggestions.length === 0 ? html`<p className="text-[10px] text-slate-500 text-center uppercase py-4">Nenhuma sugestão nova.</p>` : ''}
+                                ${adminSuggestions.map(sug => html`
+                                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
+                                        <div className="flex justify-between mb-2">
+                                            <span className="text-[8px] font-black text-violet-400 uppercase">${sug.userName || 'Usuário'}</span>
+                                            <span className="text-[8px] text-slate-600">${sug.createdAt?.toDate ? new Date(sug.createdAt.toDate()).toLocaleDateString() : ''}</span>
+                                        </div>
+                                        <p className="text-xs text-slate-300 mb-3">${sug.message}</p>
+                                        ${sug.reply ? html`
+                                            <div className="mt-2 p-2 bg-violet-600/10 rounded-xl border border-violet-600/20">
+                                                <p className="text-[10px] text-violet-400 font-bold">Resposta: ${sug.reply}</p>
+                                            </div>
+                                        ` : html`
+                                            <div className="flex gap-2">
+                                                <input id=${`reply-${sug.id}`} className="flex-1 bg-slate-800 rounded-lg text-[10px] p-2 text-white outline-none" placeholder="Responder..." />
+                                                <button onClick=${() => {
+                                                    const i = document.getElementById(`reply-${sug.id}`);
+                                                    sendReply(sug.id, i.value);
+                                                    i.value='';
+                                                }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px]">
+                                                    <i className="fas fa-paper-plane"></i>
+                                                </button>
+                                            </div>
+                                        `}
+                                    </div>
+                                `)}
+                            </div>
+                        ` : adminTab === 'direct' ? html`
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Selecionar Usuário</label>
+                                    <select id="select-user-direct" className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-[10px] text-white font-bold outline-none focus:ring-1 focus:ring-violet-500">
+                                        <option value="">Selecione um usuário...</option>
+                                        ${allUsers.map(u => html`<option value=${u.id}>${u.appName || u.email} (${u.email})</option>`)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Mensagem</label>
+                                    <textarea id="direct-msg-text" className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white min-h-[80px]" placeholder="Escreva a mensagem direta..."></textarea>
+                                </div>
+                                <button onClick=${() => {
+                                    const userId = document.getElementById('select-user-direct').value;
+                                    const msg = document.getElementById('direct-msg-text').value;
+                                    if(userId && msg) {
+                                        sendDirectMessage(userId, msg);
+                                        document.getElementById('direct-msg-text').value = '';
+                                    } else {
+                                        alert('Selecione um usuário e digite a mensagem');
+                                    }
+                                }} className="w-full py-4 bg-violet-600 text-white font-black rounded-xl text-[10px] uppercase">Enviar Mensagem Direta</button>
+                            </div>
+                        ` : html`
+                            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                                ${allMessagesHistory.map(m => html`
+                                    <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800/50 text-[10px]">
+                                        <div className="flex justify-between text-slate-500 mb-1">
+                                            <span className="font-black text-violet-500">${m.userName || 'Sistema'}</span>
+                                            <span>${new Date(m.createdAt?.toDate()).toLocaleString()}</span>
+                                        </div>
+                                        <p className="text-slate-300 italic">" ${m.message} "</p>
+                                        ${m.reply && html`<p className="mt-1 text-emerald-400 font-bold border-l-2 border-emerald-400 pl-2">R: ${m.reply}</p>`}
+                                    </div>
+                                `)}
+                            </div>
+                        `}
+                    </div>
+                ` : html`
+                    <div className="space-y-4">
+                        <textarea value=${suggestionText} onInput=${e => setSuggestionText(e.target.value)}
+                            className="w-full bg-slate-950 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px] border border-slate-800 focus:ring-1 focus:ring-violet-500 outline-none"
+                            placeholder="No que podemos melhorar o app?"></textarea>
+                        <button disabled=${sendingSuggestion} onClick=${sendSuggestion}
+                            className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase shadow-lg shadow-violet-600/20 active:scale-95 transition-all">
+                            ${sendingSuggestion ? 'Enviando...' : 'Enviar Feedback'}
+                        </button>
+                    </div>
+                `}
             </div>
-          ` : html`
-            <div className="flex gap-2">
-              <input id=${`reply-${sug.id}`} className="flex-1 bg-slate-800 rounded-lg text-[10px] p-2 text-white" placeholder="Responder..." />
-              <button onClick=${() => {
-                const i = document.getElementById(`reply-${sug.id}`);
-                sendReply(sug.id, i.value);
-                i.value='';
-              }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px]">
-                <i className="fas fa-paper-plane"></i>
-              </button>
-            </div>
-          `}
-        </div>
-      `)}
-    </div>
-  ` : html`
-    <div className="space-y-4">
-      <textarea value=${suggestionText} onInput=${e => setSuggestionText(e.target.value)}
-        className="w-full bg-slate-950 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px]"
-        placeholder="No que podemos melhorar o app?"></textarea>
 
-      <button disabled=${sendingSuggestion} onClick=${sendSuggestion}
-        className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase">
-        ${sendingSuggestion ? 'Enviando...' : 'Enviar Feedback'}
-      </button>
-    </div>
-  `}
-</div>
-
-
-
-
+            
             <div className="pt-4 space-y-4">
-                <button onClick=${async () => {
-                    try {
-                        await updateDoc(doc(db, "users", user.id), { 
-                            appName: profileName, 
-                            secondaryName: secondaryName, 
-                            photoURL: profilePhoto,
-                            secondaryPhotoURL: secondaryPhoto,
-                            soundEnabled: soundEnabled
-                        });
-                        alert("As configurações foram salvas com sucesso!");
-                    } catch (err) {
-                        alert("Erro ao sincronizar dados com o servidor.");
-                    }
-                }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
+ <button
+  onClick=${async () => {
+    try {
+      console.log("Iniciando salvamento para ID:", user.id);
+      
+      await setDoc(doc(db, "users", user.id), { 
+        appName: profileName, 
+        secondaryName: secondaryName, 
+        photoURL: profilePhoto,
+        secondaryPhotoURL: secondaryPhoto,
+        soundEnabled: soundEnabled
+      }, { merge: true });
 
-                <button onClick=${handleClearFinancialData} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">
+      alert("As configurações foram salvas com sucesso!");
+      window.location.reload();
+    } catch (err) {
+      console.error("Erro detalhado ao salvar:", err);
+      alert("Erro ao sincronizar dados com o servidor.");
+    }
+  }}
+  className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all"
+>
+  Sincronizar Alterações
+</button>
+
+
+                <button onClick=${handleClearFinancialData} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-600/30 active:scale-95 hover:bg-rose-500 transition-all">
                     <i className="fas fa-eraser mr-2"></i> Limpar Dados Financeiros
                 </button>
 
@@ -1736,4 +1819,4 @@ const handleAppShare = async () => {
         ReactDOM.render(html`<${App} />`, document.getElementById('root'));
     </script>
 </body>
-</html> 
+</html>

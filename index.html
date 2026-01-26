@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -999,26 +998,23 @@ const handleAppShare = async () => {
 
             // Efeito para renderizar gráficos
             useEffect(() => {
- useEffect(() => {
   if (activeTab !== 'analytics') return;
 
+  // ========== DADOS BASE ==========
+  const monthsMap = {};
   const channelTotals = { PIX: 0, CREDITO: 0, DEBITO: 0, DINHEIRO: 0 };
   const monthly = {};
 
   currentTransactions.forEach(t => {
     const m = t.date?.slice(0,7); // YYYY-MM
-    if (!monthly[m]) monthly[m] = { inc:0, exp:0 };
-
-    const val = t.amountNum || 0;
+    if (!monthly[m]) monthly[m] = { inc:0, exp:0, bal:0 };
 
     if (t.type === 'INCOME') {
-      monthly[m].inc += val;
+      monthly[m].inc += t.amountNum || 0;
+      channelTotals[t.method] += t.amountNum || 0;
     } else {
-      monthly[m].exp += val;
-    }
-
-    if (channelTotals[t.method] !== undefined) {
-      channelTotals[t.method] += val;
+      monthly[m].exp += t.amountNum || 0;
+      channelTotals[t.method] += t.amountNum || 0;
     }
   });
 
@@ -1035,7 +1031,7 @@ const handleAppShare = async () => {
     expSeries.push(monthly[m].exp);
   });
 
-  // ===== SALDO =====
+  // ====== SALDO MENSAL (LINE) ======
   const ctxSaldo = document.getElementById('analyticsLineSaldo');
   if (ctxSaldo) {
     if (lineSaldoRef.current) lineSaldoRef.current.destroy();
@@ -1046,16 +1042,18 @@ const handleAppShare = async () => {
         datasets: [{
           label: 'Saldo Mensal',
           data: saldoSeries,
+          borderColor: '#8b5cf6',
+          backgroundColor: '#8b5cf622',
           tension: 0.4,
           fill: true,
-          borderWidth: 2
+          pointRadius: 4
         }]
       },
-      options: { responsive:true }
+      options: { responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
     });
   }
 
-  // ===== FLOW =====
+  // ===== ENTRADAS x SAÍDAS (LINE) =====
   const ctxFlow = document.getElementById('analyticsLineFlow');
   if (ctxFlow) {
     if (lineFlowRef.current) lineFlowRef.current.destroy();
@@ -1064,15 +1062,15 @@ const handleAppShare = async () => {
       data:{
         labels: labelsMonths,
         datasets:[
-          { label:'Entradas', data:incSeries, tension:.4 },
-          { label:'Saídas', data:expSeries, tension:.4 }
+          { label:'Entradas', data:incSeries, borderColor:'#10b981', tension:.4 },
+          { label:'Saídas', data:expSeries, borderColor:'#f43f5e', tension:.4 }
         ]
       },
-      options:{ responsive:true }
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
     });
   }
 
-  // ===== CANAL =====
+  // ====== TOTAL POR CANAL (BAR) ======
   const ctxCanal = document.getElementById('analyticsChannelBar');
   if (ctxCanal) {
     if (channelBarRef.current) channelBarRef.current.destroy();
@@ -1087,15 +1085,15 @@ const handleAppShare = async () => {
             channelTotals.CREDITO,
             channelTotals.DEBITO,
             channelTotals.DINHEIRO
-          ]
+          ],
+          backgroundColor:['#10b981','#8b5cf6','#0ea5e9','#f59e0b']
         }]
       },
-      options:{ responsive:true }
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
     });
   }
 
 }, [activeTab, currentTransactions]);
-
 
 
             // Tela de Carregamento Inicial
@@ -1522,12 +1520,6 @@ const handleAppShare = async () => {
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
                                 </div>
-                                <div className="grid gap-6">
-  <canvas id="analyticsLineSaldo" height="160"></canvas>
-  <canvas id="analyticsLineFlow" height="160"></canvas>
-  <canvas id="analyticsChannelBar" height="200"></canvas>
-</div>
-
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
                                         <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">Distribuição de Valores</h4>

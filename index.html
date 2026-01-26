@@ -1471,253 +1471,326 @@ const handleAppShare = async () => {
                             </div>
                         ` : ''}
 
-                       ${activeTab === 'settings' ? html`
-    <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
-        <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
-        
-        <div className="space-y-6">
-            {/* Bloco Conta Principal */}
-            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
-                <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
-                    <div className="relative cursor-pointer group" onClick=${() => fileInputPrincipalRef.current.click()}>
-                        <${Avatar} src=${profilePhoto} size="lg" />
-                        <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
-                            <i className="fas fa-camera"></i>
-                        </div>
-                        <input type="file" ref=${fileInputPrincipalRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'principal')} />
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Principal</h4>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Titular</p>
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
-                    <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-violet-500 transition-all" value=${profileName} onInput=${e => setProfileName(e.target.value)} />
-                </div>
-            </div>
-
-            {/* Bloco Conta Secundária */}
-            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
-                <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
-                    <div className="relative cursor-pointer group" onClick=${() => fileInputSecondaryRef.current.click()}>
-                        <${Avatar} src=${secondaryPhoto} size="lg" />
-                        <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
-                            <i className="fas fa-camera"></i>
-                        </div>
-                        <input type="file" ref=${fileInputSecondaryRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'secondary')} />
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Secundária</h4>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Dependente / Investimentos</p>
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
-                    <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-emerald-500 transition-all" value=${secondaryName} onInput=${e => setSecondaryName(e.target.value)} />
-                </div>
-            </div>
-
-            {/* Bloco Convidar */}
-            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-8 rounded-[2.5rem] shadow-2xl text-white relative overflow-hidden group">
-                <div className="relative z-10">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl shadow-inner">
-                            <i className="fas fa-gift"></i>
-                        </div>
-                        <div>
-                            <h4 className="font-black uppercase text-sm tracking-tighter">Convidar Amigo</h4>
-                            <p className="text-[10px] opacity-80 font-bold">Indique o app para um amigo!</p>
-                        </div>
-                    </div>
-                    <button onClick=${() => {
-                        if (navigator.share) {
-                            navigator.share({ title: 'App Finanças', text: 'Estou usando este app para gerenciar minhas contas!', url: window.location.href });
-                        } else {
-                            alert('Link de convite copiado!');
-                        }
-                    }} className="w-full bg-violet-600 text-white py-5 rounded-2xl text-[10px] font-black uppercase hover:bg-slate-100 transition-all shadow-xl shadow-black/20">
-                        Enviar Convite
-                    </button>
-                </div>
-                <i className="fas fa-share-alt absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12 transition-transform duration-500 group-hover:rotate-0"></i>
-            </div>
-
-            {/* SEÇÃO DE SUGESTÕES / PAINEL ADMIN INTEGRADO */}
-            <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <i className="fas fa-comment-dots text-violet-500"></i>
-                        <h3 className="text-xs font-black text-white uppercase tracking-widest">
-                            ${user.email === 'davidbhmg147@gmail.com' ? 'Painel Admin (Niklaus)' : 'Sugestões para o Adm'}
-                        </h3>
-                    </div>
-                </div>
-
-                ${user.email === 'davidbhmg147@gmail.com' ? html`
-                    {/* Menu de Abas do Admin */}
-                    <div className="flex bg-slate-950 p-1 rounded-xl gap-1">
-                        <button onClick=${() => setAdminTab('inbox')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'inbox' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Sugestões</button>
-                        <button onClick=${() => setAdminTab('direct')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'direct' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Enviar Direto</button>
-                        <button onClick=${() => setAdminTab('history')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'history' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Histórico</button>
-                    </div>
-
-                    <div className="mt-4">
-                        ${adminTab === 'inbox' ? html`
-                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                                ${adminSuggestions.length === 0 ? html`<p className="text-[10px] text-slate-500 text-center uppercase py-4">Nenhuma sugestão nova.</p>` : ''}
-                                ${adminSuggestions.map(sug => html`
-                                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
-                                        <div className="flex justify-between mb-2">
-                                            <span className="text-[8px] font-black text-violet-400 uppercase">${sug.userName || 'Usuário'}</span>
-                                            <span className="text-[8px] text-slate-600">${sug.createdAt?.toDate ? new Date(sug.createdAt.toDate()).toLocaleDateString() : ''}</span>
-                                        </div>
-                                        <p className="text-xs text-slate-300 mb-3">${sug.message}</p>
-                                        ${sug.reply ? html`
-                                            <div className="mt-2 p-2 bg-violet-600/10 rounded-xl border border-violet-600/20">
-                                                <p className="text-[10px] text-violet-400 font-bold">Resposta: ${sug.reply}</p>
-                                            </div>
-                                        ` : html`
-                                            <div className="flex gap-2">
-                                                <input id=${`reply-${sug.id}`} className="flex-1 bg-slate-800 rounded-lg text-[10px] p-2 text-white outline-none" placeholder="Responder..." />
-                                                <button onClick=${() => {
-                                                    const i = document.getElementById(`reply-${sug.id}`);
-                                                    sendReply(sug.id, i.value);
-                                                    i.value='';
-                                                }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px]">
-                                                    <i className="fas fa-paper-plane"></i>
-                                                </button>
-                                            </div>
-                                        `}
-                                    </div>
-                                `)}
-                            </div>
-                        ` : adminTab === 'direct' ? html`
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Selecionar Usuário</label>
-                                    <select id="select-user-direct" className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-[10px] text-white font-bold outline-none focus:ring-1 focus:ring-violet-500">
-                                        <option value="">Selecione um usuário...</option>
-                                        ${allUsers.map(u => html`<option value=${u.id}>${u.appName || u.email} (${u.email})</option>`)}
-                                    </select>
+                        ${activeTab === 'analytics' ? html`
+                            <div className="space-y-8 animate-in">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
                                 </div>
-                                <div>
-                                    <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Mensagem</label>
-                                    <textarea id="direct-msg-text" className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white min-h-[80px]" placeholder="Escreva a mensagem direta..."></textarea>
-                                </div>
-                                <button onClick=${() => {
-                                    const userId = document.getElementById('select-user-direct').value;
-                                    const msg = document.getElementById('direct-msg-text').value;
-                                    if(userId && msg) {
-                                        sendDirectMessage(userId, msg);
-                                        document.getElementById('direct-msg-text').value = '';
-                                    } else {
-                                        alert('Selecione um usuário e digite a mensagem');
-                                    }
-                                }} className="w-full py-4 bg-violet-600 text-white font-black rounded-xl text-[10px] uppercase">Enviar Mensagem Direta</button>
-                            </div>
-                        ` : html`
-                            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                                ${allMessagesHistory.map(m => html`
-                                    <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800/50 text-[10px]">
-                                        <div className="flex justify-between text-slate-500 mb-1">
-                                            <span className="font-black text-violet-500">${m.userName || 'Sistema'}</span>
-                                            <span>${new Date(m.createdAt?.toDate()).toLocaleString()}</span>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">Distribuição de Valores</h4>
+                                        <div className="relative w-full max-w-[320px] aspect-square">
+                                            <canvas id="analyticsDoughnutChart"></canvas>
                                         </div>
-                                        <p className="text-slate-300 italic">" ${m.message} "</p>
-                                        ${m.reply && html`<p className="mt-1 text-emerald-400 font-bold border-l-2 border-emerald-400 pl-2">R: ${m.reply}</p>`}
+                                        <div className="mt-8 grid grid-cols-2 gap-4 w-full">
+                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
+                                                <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</p>
+                                            </div>
+                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
+                                                <p className="text-sm font-black text-violet-400">${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                `)}
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Volume por Canal (Qtd)</h4>
+                                        <div className="flex-1 flex items-center min-h-[300px]">
+                                            <canvas id="analyticsBarChart"></canvas>
+                                        </div>
+                                        <div className="mt-4 text-[9px] text-slate-500 font-bold uppercase tracking-tighter text-center">
+                                            Barras superiores indicam entradas, barras tracejadas indicam saídas.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
+                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.length}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'INCOME').length}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'EXPENSE').length}</p>
+                                        </div>
+                                        <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
+                                            <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
+                                            <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase"> CONSULTAR  DICAS. <i className="fas fa-magic text-[10px] text-violet-500"></i></p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        `}
-                    </div>
-                ` : html`
-                    <div className="space-y-4">
-                        <textarea value=${suggestionText} onInput=${e => setSuggestionText(e.target.value)}
-                            className="w-full bg-slate-950 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px] border border-slate-800 focus:ring-1 focus:ring-violet-500 outline-none"
-                            placeholder="No que podemos melhorar o app?"></textarea>
-                        <button disabled=${sendingSuggestion} onClick=${sendSuggestion}
-                            className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase shadow-lg shadow-violet-600/20 active:scale-95 transition-all">
-                            ${sendingSuggestion ? 'Enviando...' : 'Enviar Feedback'}
-                        </button>
-                    </div>
-                `}
-            </div>
+                        ` : ''}
+${activeTab === 'settings' ? html`
+<div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
+  <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
 
-            {/* BOTÕES DE AÇÃO GERAIS */}
-            <div className="pt-4 space-y-4">
-                <button onClick=${async () => {
-                    try {
-                        await updateDoc(doc(db, "users", user.id), { 
-                            appName: profileName, 
-                            secondaryName: secondaryName, 
-                            photoURL: profilePhoto,
-                            secondaryPhotoURL: secondaryPhoto,
-                            soundEnabled: soundEnabled
-                        });
-                        alert("As configurações foram salvas com sucesso!");
-                    } catch (err) {
-                        alert("Erro ao sincronizar dados com o servidor.");
-                    }
-                }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
-
-                <button onClick=${handleClearFinancialData} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-600/30 active:scale-95 hover:bg-rose-500 transition-all">
-                    <i className="fas fa-eraser mr-2"></i> Limpar Dados Financeiros
-                </button>
-
-                <button onClick=${handleDeleteAccount} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-600/30 active:scale-95 hover:bg-rose-500 transition-all">
-                    <i className="fas fa-trash-alt mr-2"></i> Excluir Minha Conta
-                </button>
-
-                <button onClick=${handleLogout} className="md:hidden w-full py-5 bg-slate-800 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">
-                    <i className="fas fa-sign-out-alt mr-2"></i> Encerrar Sessão
-                </button>
-            </div>
+  <div className="space-y-6">
+    <!-- Painel de Conta Principal e Secundária -->
+    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
+      <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
+        <div className="relative cursor-pointer group" onClick=${() => fileInputPrincipalRef.current.click()}>
+          <${Avatar} src=${profilePhoto} size="lg" />
+          <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+            <i className="fas fa-camera"></i>
+          </div>
+          <input type="file" ref=${fileInputPrincipalRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'principal')} />
         </div>
+        <div>
+          <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Principal</h4>
+          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Titular</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
+        <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-violet-500 transition-all" value=${profileName} onInput=${e => setProfileName(e.target.value)} />
+      </div>
     </div>
-` : ''}
-                    </main>
-                    <div className="text-center pb-24 md:pb-10 text-[8px] font-black text-slate-800 uppercase tracking-[0.4em] opacity-40 animate-in">Produzido por NIKLAUS</div>
-                    <button onClick=${() => openAddTransaction(activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions) || (activeTab === 'analytics' && viewSecondaryTransactions))} className="fixed bottom-24 right-6 md:bottom-10 md:right-10 bg-violet-600 text-white w-16 h-16 rounded-[1.8rem] shadow-2xl flex items-center justify-center z-50 border-4 border-slate-950 active:scale-90 hover:bg-violet-500 transition-all group">
-                        <i className="fas fa-plus text-xl group-hover:rotate-90 transition-transform"></i>
-                    </button>
-                    <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 flex justify-around p-4 z-[80] shadow-2xl">
-    <button onClick=${() => setActiveTab('dashboard')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'dashboard' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
-        <div className="relative">
-            <i className="fas fa-home text-sm"></i>
-            ${activeTab !== 'dashboard' && unreadCount > 0 ? html`<span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-950 animate-pulse"></span>` : ''}
+
+    <!-- Painel Secundária -->
+    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
+      <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
+        <div className="relative cursor-pointer group" onClick=${() => fileInputSecondaryRef.current.click()}>
+          <${Avatar} src=${secondaryPhoto} size="lg" />
+          <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+            <i className="fas fa-camera"></i>
+          </div>
+          <input type="file" ref=${fileInputSecondaryRef} className="hidden" accept="image/*" onChange=${(e) => handlePhotoUpload(e, 'secondary')} />
         </div>
-        <span className="text-[7px] font-black uppercase tracking-widest">Início</span>
-    </button>
-
-    <button onClick=${() => setActiveTab('analytics')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'analytics' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
-        <i className="fas fa-chart-pie text-sm"></i>
-        <span className="text-[7px] font-black uppercase tracking-widest">Gráfico</span>
-    </button>
-
-    <button onClick=${() => setActiveTab('secondary')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'secondary' ? 'text-emerald-400 opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
-        <i className="fas fa-wallet text-sm"></i>
-        <span className="text-[7px] font-black uppercase tracking-widest">${secondaryName || 'Secundária'}</span>
-    </button>
-
-    <button onClick=${() => navigateToExtrato(false)} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'transactions' && !viewSecondaryTransactions ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
-        <i className="fas fa-list text-sm"></i>
-        <span className="text-[7px] font-black uppercase tracking-widest">Extrato</span>
-    </button>
-
-    <button onClick=${() => setActiveTab('settings')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'settings' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
-        <div className="relative">
-            <i className="fas fa-user-cog text-sm"></i>
-            ${unreadCount > 0 ? html`<span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-950 animate-pulse"></span>` : ''}
+        <div>
+          <h4 className="text-sm font-black text-white uppercase tracking-wider">Conta Secundária</h4>
+          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Dependente / Investimentos</p>
         </div>
-        <span className="text-[7px] font-black uppercase tracking-widest">Perfil</span>
-    </button>
-</nav>
-                </div>`;
-        };
+      </div>
+      <div className="space-y-2">
+        <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
+        <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-emerald-500 transition-all" value=${secondaryName} onInput=${e => setSecondaryName(e.target.value)} />
+      </div>
+    </div>
 
-        // Renderização Final no DOM
-        ReactDOM.render(html`<${App} />`, document.getElementById('root'));
-    </script>
+    <!-- Aba de Sugestões do Admin -->
+    <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
+      <div className="flex items-center gap-3">
+        <i className="fas fa-comment-dots text-violet-500"></i>
+        <h3 className="text-xs font-black text-white uppercase tracking-widest">
+          ${user.email === 'davidbhmg147@gmail.com' ? 'Painel do Administrador (Niklaus)' : 'Sugestões para o Adm'}
+        </h3>
+      </div>
+
+      ${user.email === 'davidbhmg147@gmail.com' ? html`
+      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+        ${adminSuggestions.length === 0 
+          ? html`<p className="text-[10px] text-slate-500 text-center uppercase">Nenhuma sugestão nova.</p>` 
+          : ''}
+
+        ${adminSuggestions.map(sug => html`
+        <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
+          <div className="flex justify-between mb-2">
+            <span className="text-[8px] font-black text-violet-400 uppercase">
+              ${sug.userName || 'Usuário'}
+            </span>
+            <span className="text-[8px] text-slate-600">
+              ${sug.createdAt?.toDate ? new Date(sug.createdAt.toDate()).toLocaleDateString() : ''}
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-300 mb-3">${sug.message}</p>
+
+          ${sug.reply ? html`
+          <div className="mt-2 p-2 bg-violet-600/10 rounded-xl border border-violet-600/20">
+            <p className="text-[10px] text-violet-400 font-bold">Sua resposta: ${sug.reply}</p>
+          </div>
+          ` : html`
+          <div className="flex gap-2">
+            <input id=${`reply-${sug.id}`} className="flex-1 bg-slate-800 rounded-lg text-[10px] p-2 text-white" placeholder="Responder..." />
+            <button onClick=${() => {
+              const i = document.getElementById(`reply-${sug.id}`);
+              sendReply(sug.id, i.value);
+              i.value='';
+            }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px]">
+              <i className="fas fa-paper-plane"></i>
+            </button>
+          </div>
+          `}
+        </div>
+        `)}
+      </div>
+      ` : html`
+      <div className="space-y-4">
+        <textarea value=${suggestionText} onInput=${e => setSuggestionText(e.target.value)}
+          className="w-full bg-slate-950 rounded-2xl p-4 text-xs text-slate-300 min-h-[100px]"
+          placeholder="No que podemos melhorar o app?"></textarea>
+
+        <button disabled=${sendingSuggestion} onClick=${sendSuggestion}
+          className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase">
+          ${sendingSuggestion ? 'Enviando...' : 'Enviar Feedback'}
+        </button>
+      </div>
+      `}
+    </div>
+
+    <!-- NOVA ABA: Enviar Mensagem Manual -->
+    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-4">
+      <h3 className="text-xs font-black text-white uppercase tracking-widest">Enviar Mensagem Manual</h3>
+
+      <select id="manual-user-select" className="w-full p-3 bg-slate-800 rounded-xl text-xs text-white">
+        <option value="">Escolha um usuário</option>
+      </select>
+
+      <textarea id="manual-message" className="w-full p-4 bg-slate-950 rounded-xl text-xs text-white min-h-[80px]" placeholder="Digite a mensagem..."></textarea>
+
+      <button id="manual-send-btn" className="w-full py-3 bg-violet-600 text-white font-black rounded-xl text-[10px] uppercase">
+        Enviar Mensagem
+      </button>
+    </div>
+
+    <!-- NOVA ABA: Histórico de Mensagens -->
+    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-4">
+      <h3 className="text-xs font-black text-white uppercase tracking-widest">Histórico de Mensagens</h3>
+      <div id="message-history" className="max-h-64 overflow-y-auto space-y-2">
+        <p className="text-[10px] text-slate-500 text-center">Carregando histórico...</p>
+      </div>
+    </div>
+
+    <!-- Botões de sincronização -->
+    <div className="pt-4 space-y-4">
+      <button onClick=${async () => {
+        try {
+          await updateDoc(doc(db, "users", user.id), { 
+            appName: profileName, 
+            secondaryName: secondaryName, 
+            photoURL: profilePhoto,
+            secondaryPhotoURL: secondaryPhoto,
+            soundEnabled: soundEnabled
+          });
+          alert("As configurações foram salvas com sucesso!");
+        } catch (err) {
+          alert("Erro ao sincronizar dados com o servidor.");
+        }
+      }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
+
+      <button onClick=${handleClearFinancialData} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">
+        <i className="fas fa-eraser mr-2"></i> Limpar Dados Financeiros
+      </button>
+
+      <button onClick=${handleDeleteAccount} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-600/30 active:scale-95 hover:bg-rose-500 transition-all">
+        <i className="fas fa-trash-alt mr-2"></i> Excluir Minha Conta
+      </button>
+
+      <button onClick=${handleLogout} className="md:hidden w-full py-5 bg-slate-800 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">
+        <i className="fas fa-sign-out-alt mr-2"></i> Encerrar Sessão
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Carrega todos os usuários no dropdown
+  async function carregarUsuarios() {
+    const res = await fetch("/usuarios-com-status");
+    const usuarios = await res.json();
+
+    const select = document.getElementById("manual-user-select");
+    select.innerHTML = '<option value="">Escolha um usuário</option>';
+    usuarios.forEach(u => {
+      const opt = document.createElement("option");
+      opt.value = u.id;
+      opt.textContent = `${u.nome || u.email} ${u.jaRecebeuMensagem ? "(Já recebeu)" : ""}`;
+      select.appendChild(opt);
+    });
+  }
+
+  // Enviar mensagem manual
+ <script>
+  // --- Enviar mensagem manual ---
+  document.getElementById("manual-send-btn").addEventListener("click", async () => {
+    const userId = document.getElementById("manual-user-select").value;
+    const mensagem = document.getElementById("manual-message").value;
+
+    if (!userId || !mensagem) {
+      return alert("Escolha um usuário e digite uma mensagem.");
+    }
+
+    try {
+      const res = await fetch("/mensagem-para-usuario", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, mensagem })
+      });
+
+      const data = await res.json();
+
+      if (data.sucesso) {
+        alert("Mensagem enviada com sucesso!");
+        document.getElementById("manual-message").value = "";
+        carregarHistorico(); // Atualiza histórico automaticamente
+      } else {
+        alert("Erro ao enviar mensagem: " + data.erro);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao enviar mensagem.");
+    }
+  });
+
+  // --- Carregar histórico de mensagens ---
+  async function carregarHistorico() {
+    try {
+      const res = await fetch("/historico-mensagens");
+      const mensagens = await res.json();
+
+      const historyDiv = document.getElementById("message-history");
+      if (!mensagens || mensagens.length === 0) {
+        historyDiv.innerHTML = '<p class="text-[10px] text-slate-500 text-center">Nenhuma mensagem ainda.</p>';
+        return;
+      }
+
+      historyDiv.innerHTML = mensagens.map(msg => `
+        <div class="p-2 bg-slate-950 rounded-xl border border-slate-800">
+          <div class="flex justify-between mb-1">
+            <span class="text-[8px] font-black text-violet-400 uppercase">${msg.remetenteNome || msg.remetenteEmail}</span>
+            <span class="text-[8px] text-slate-600">${new Date(msg.createdAt).toLocaleString()}</span>
+          </div>
+          <p class="text-[10px] text-slate-300">${msg.texto}</p>
+        </div>
+      `).join('');
+    } catch (err) {
+      console.error(err);
+      document.getElementById("message-history").innerHTML = '<p class="text-[10px] text-rose-500 text-center">Erro ao carregar histórico.</p>';
+    }
+  }
+
+  // --- Carregar todos os usuários no dropdown ---
+  async function carregarUsuarios() {
+    try {
+      const res = await fetch("/usuarios-com-status");
+      const usuarios = await res.json();
+
+      const select = document.getElementById("manual-user-select");
+      select.innerHTML = '<option value="">Escolha um usuário</option>';
+      usuarios.forEach(u => {
+        const opt = document.createElement("option");
+        opt.value = u.id;
+        opt.textContent = `${u.nome || u.email} ${u.jaRecebeuMensagem ? "(Já recebeu)" : ""}`;
+        select.appendChild(opt);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // --- Inicializa ---
+  carregarUsuarios();
+  carregarHistorico();
+
+  // --- Renderiza o App React ---
+  ReactDOM.render(html`<${App} />`, document.getElementById('root'));
+</script>
 </body>
 </html>

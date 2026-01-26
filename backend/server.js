@@ -151,4 +151,27 @@ app.post("/responder-sugestao", async (req, res) => {
     const sugRef = db.collection("suggestions").doc(sugestaoId);
     const sugDoc = await sugRef.get();
     if (!sugDoc.exists)
-      return res.status(404).jso
+      return res.status(404).json({ erro: "Sugestão não encontrada" });
+
+    await sugRef.update({
+      reply: resposta,
+      replyViewed: false,
+      repliedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    res.json({ sucesso: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Erro ao responder" });
+  }
+});
+
+// ========================
+app.get("/", (req, res) =>
+  res.send("Servidor Niklaus Online 🚀")
+);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log(`🚀 Servidor rodando na porta ${PORT}`)
+);

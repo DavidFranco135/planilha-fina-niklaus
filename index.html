@@ -1564,7 +1564,7 @@ const handleAppShare = async () => {
         <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
         
         <div className="space-y-6">
-            
+            {/* Bloco Conta Principal */}
             <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                 <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
                     <div className="relative cursor-pointer group" onClick=${() => fileInputPrincipalRef.current.click()}>
@@ -1585,7 +1585,7 @@ const handleAppShare = async () => {
                 </div>
             </div>
 
-           
+            {/* Bloco Conta Secundária */}
             <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                 <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
                     <div className="relative cursor-pointer group" onClick=${() => fileInputSecondaryRef.current.click()}>
@@ -1606,7 +1606,7 @@ const handleAppShare = async () => {
                 </div>
             </div>
 
-            
+            {/* Bloco Convidar */}
             <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-8 rounded-[2.5rem] shadow-2xl text-white relative overflow-hidden group">
                 <div className="relative z-10">
                     <div className="flex items-center gap-4 mb-4">
@@ -1631,7 +1631,7 @@ const handleAppShare = async () => {
                 <i className="fas fa-share-alt absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12 transition-transform duration-500 group-hover:rotate-0"></i>
             </div>
 
-            
+            {/* SEÇÃO DE SUGESTÕES / PAINEL ADMIN INTEGRADO */}
             <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -1732,23 +1732,20 @@ const handleAppShare = async () => {
                 `}
             </div>
 
+            {/* BOTÕES DE AÇÃO GERAIS */}
             <div className="pt-4 space-y-4">
-               <button onClick=${async () => {
-    console.log("Tentando salvar para o ID:", user.id); // ADICIONE ISSO
-    try {
-        await updateDoc(doc(db, "users", user.id), { 
-            appName: profileName, 
-            secondaryName: secondaryName, 
-            photoURL: profilePhoto,
-            secondaryPhotoURL: secondaryPhoto,
-            soundEnabled: soundEnabled
-        });
-        alert("Salvo!");
-    } catch (err) {
-        console.error("Erro detalhado:", err); // ADICIONE ISSO
-        alert("Erro ao sincronizar.");
-    }
-}}>
+                <button onClick=${async () => {
+                    try {
+                        await updateDoc(doc(db, "users", user.id), { 
+                            appName: profileName, 
+                            secondaryName: secondaryName, 
+                            photoURL: profilePhoto,
+                            secondaryPhotoURL: secondaryPhoto,
+                            soundEnabled: soundEnabled
+                        });
+                        alert("As configurações foram salvas com sucesso!");
+                    } catch (err) {
+                        alert("Erro ao sincronizar dados com o servidor.");
                     }
                 }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
 

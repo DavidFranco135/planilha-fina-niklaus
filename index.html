@@ -389,56 +389,54 @@
     // Limpa listener anterior
     unsubSugg();
 
-    if (isUserAdmin) {
-      // 📥 Admin vê TODAS as sugestões
-      const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-      unsubSugg = onSnapshot(qs, (snap) => {
-        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setAdminSuggestions(docs);
-        setAllMessagesHistory(docs);
-      });
-
-      // 👥 Admin vê TODOS os usuários
-      const qu = query(collection(db, "users"));
-      unsubUsersList = onSnapshot(qu, (snap) => {
-        setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      });
-
-    } else {
-      // 📩 Usuário vê só as próprias sugestões
-      // 📩 Usuário vê só as próprias sugestões
-const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-unsubSugg = onSnapshot(qsUser, (snap) => {
-    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setUserSuggestions(list);
-
-    // CORRIGIDO: Conta respostas E mensagens diretas não visualizadas
-    const unread = list.filter(sug => 
-        (sug.reply && sug.replyViewed === false) || 
-        (sug.directMessage && sug.replyViewed === false)
-    ).length;
-    setUnreadCount(unread);
-});
-   }
-  // 🔹 Listener das TRANSAÇÕES
-  const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
-  const unsubTx = onSnapshot(qTx, (s) => {
-    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-    setTransactions(
-      docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-    );
-    setLoading(false);
+   if (isUserAdmin) {
+  // 📥 Admin vê TODAS as sugestões
+  const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+  unsubSugg = onSnapshot(qs, (snap) => {
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setAdminSuggestions(docs);
+    setAllMessagesHistory(docs);
   });
 
-  // 🔹 Cleanup
-  return () => {
-    unsubUser();
-    unsubTx();
-    unsubSugg();
-    unsubUsersList();
-  };
-};
+  // 👥 Admin vê TODOS os usuários
+  const qu = query(collection(db, "users"));
+  unsubUsersList = onSnapshot(qu, (snap) => {
+    setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
 
+} else {
+  // 📩 Usuário vê só as próprias sugestões
+  const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+  unsubSugg = onSnapshot(qsUser, (snap) => {
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setUserSuggestions(list);
+    
+    // CORRIGIDO: Conta respostas E mensagens diretas não visualizadas
+    const unread = list.filter(sug => 
+      (sug.reply && sug.replyViewed === false) || 
+      (sug.directMessage && sug.replyViewed === false)
+    ).length;
+    setUnreadCount(unread);
+  });
+}
+
+// 🔹 Listener das TRANSAÇÕES
+const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
+const unsubTx = onSnapshot(qTx, (s) => {
+  const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
+  setTransactions(
+    docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+  );
+  setLoading(false);
+});
+
+// 🔹 Cleanup
+return () => {
+  unsubUser();
+  unsubTx();
+  unsubSugg();
+  unsubUsersList();
+};
             // Efeito para checar persistência de login ao carregar
             useEffect(() => {
                 const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');

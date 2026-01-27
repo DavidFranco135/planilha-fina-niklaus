@@ -745,7 +745,7 @@ const handleAuth = async (e) => {
             /**
              * Lógica de consulta à IA (Gemini)
              */
-    const [isTyping, setIsTyping] = React.useState(false);
+   const [isTyping, setIsTyping] = React.useState(false);
 const typingIntervalRef = React.useRef(null);
 
 const generateAIAdvice = async () => {
@@ -812,10 +812,13 @@ const generateAIAdvice = async () => {
             ? ((totals.exp - previousMonthTotals.exp) / previousMonthTotals.exp * 100).toFixed(1)
             : 0;
 
-        const summary = `
-Você é o Niklaus, um consultor financeiro especialista, bem-humorado e direto. Analise os dados abaixo e dê conselhos PRÁTICOS e PERSONALIZADOS para ${profileName || 'o usuário'}.
+        const foodTotal = foodExpenses.reduce((sum, t) => sum + t.amount, 0);
+        const transportTotal = transportExpenses.reduce((sum, t) => sum + t.amount, 0);
+        const subscriptionTotal = subscriptionExpenses.reduce((sum, t) => sum + t.amount, 0);
 
-📊 DADOS FINANCEIROS DETALHADOS:
+        const summary = `Você é o Niklaus, um consultor financeiro especialista, bem-humorado e direto. Analise os dados abaixo e dê conselhos PRÁTICOS e PERSONALIZADOS para ${profileName || 'o usuário'}.
+
+DADOS FINANCEIROS DETALHADOS:
 
 RESUMO GERAL:
 - Entradas: R$ ${totals.inc.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
@@ -829,37 +832,34 @@ COMPARAÇÃO COM MÊS ANTERIOR:
 
 ANÁLISE DE PAGAMENTOS:
 - Uso de PIX: ${pixUsage} transações
-- Uso de Crédito: ${creditUsage} transações (${((creditUsage/totalTransactions)*100).toFixed(0)}% do total)
+- Uso de Crédito: ${creditUsage} transações (${totalTransactions > 0 ? ((creditUsage/totalTransactions)*100).toFixed(0) : 0}% do total)
 - Uso de Débito: ${debitUsage} transações
 
 CATEGORIAS DETECTADAS:
-- Gastos com Alimentação: ${foodExpenses.length} transações (R$ ${foodExpenses.reduce((sum, t) => sum + t.amount, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})
-- Gastos com Transporte: ${transportExpenses.length} transações (R$ ${transportExpenses.reduce((sum, t) => sum + t.amount, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})
-- Assinaturas/Serviços: ${subscriptionExpenses.length} transações (R$ ${subscriptionExpenses.reduce((sum, t) => sum + t.amount, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})
+- Gastos com Alimentação: ${foodExpenses.length} transações (R$ ${foodTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})})
+- Gastos com Transporte: ${transportExpenses.length} transações (R$ ${transportTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})})
+- Assinaturas e Serviços: ${subscriptionExpenses.length} transações (R$ ${subscriptionTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})})
 
 PARCELAMENTOS:
 - Total em parcelamentos: R$ ${totalInstallmentValue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
 - Quantidade de compras parceladas: ${installmentExpenses.length}
 
-${biggestExpense ? `MAIOR GASTO DO PERÍODO:
-- "${biggestExpense.description}": R$ ${biggestExpense.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-` : ''}
+${biggestExpense ? `MAIOR GASTO DO PERÍODO: ${biggestExpense.description} - R$ ${biggestExpense.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})}` : ''}
 
 ÚLTIMAS 5 TRANSAÇÕES:
 ${currentTransactions.slice(0, 5).map((t, i) => `${i+1}. ${t.description} - R$ ${t.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${t.type === 'INCOME' ? 'Entrada' : 'Saída'})`).join('\n')}
 
-🎯 INSTRUÇÕES PARA NIKLAUS:
+INSTRUÇÕES PARA NIKLAUS:
 1. Cumprimente ${profileName || 'o usuário'} de forma descontraída
 2. Faça uma análise HONESTA da situação financeira
 3. Dê 3-4 conselhos PRÁTICOS e ESPECÍFICOS baseados nos dados acima
 4. Se houver problemas (saldo negativo, muito crédito, gastos altos), seja direto mas motivador
 5. Se estiver indo bem, elogie mas sugira como melhorar ainda mais
-6. Mencione padrões específicos que você identificou (ex: "percebi que você gastou bastante com alimentação")
+6. Mencione padrões específicos que você identificou
 7. Sugira uma META concreta para o próximo mês
 8. Termine com uma frase motivacional curta e impactante
 
-IMPORTANTE: Seja ESPECÍFICO, use os números reais, cite as categorias detectadas, e dê conselhos que a pessoa possa aplicar HOJE.
-`;
+IMPORTANTE: Seja ESPECÍFICO, use os números reais, cite as categorias detectadas, e dê conselhos que a pessoa possa aplicar HOJE.`;
 
         const res = await fetch("https://controlefinanceiro-naip.onrender.com/gemini", {
             method: "POST",
@@ -895,264 +895,87 @@ IMPORTANTE: Seja ESPECÍFICO, use os números reais, cite as categorias detectad
         const offlineTips = [];
         
         if (totals.bal < 0) {
-            offlineTips.push(`💰 Atenção! Seu saldo está negativo (R$ ${Math.abs(totals.bal).toLocaleString('pt-BR')}). Priorize reduzir despesas essenciais.`);
+            offlineTips.push(`Atenção! Seu saldo está negativo (R$ ${Math.abs(totals.bal).toLocaleString('pt-BR')}). Priorize reduzir despesas essenciais.`);
         }
         
         if (channelAnalysis.CREDITO && channelAnalysis.CREDITO.exp > totals.exp * 0.5) {
-            offlineTips.push(`💳 ${Math.round((channelAnalysis.CREDITO.exp / totals.exp) * 100)}% dos gastos são no crédito. Cuidado com o limite e juros!`);
+            offlineTips.push(`${Math.round((channelAnalysis.CREDITO.exp / totals.exp) * 100)}% dos gastos são no crédito. Cuidado com o limite e juros!`);
         }
         
         if (previousMonthTotals.exp > 0 && totals.exp > previousMonthTotals.exp * 1.2) {
-            offlineTips.push(`📈 Seus gastos aumentaram ${Math.round(((totals.exp / previousMonthTotals.exp - 1) * 100))}% comparado ao mês passado. Revise suas despesas.`);
+            offlineTips.push(`Seus gastos aumentaram ${Math.round(((totals.exp / previousMonthTotals.exp - 1) * 100))}% comparado ao mês passado. Revise suas despesas.`);
         }
         
         const smallExpenses = currentTransactions.filter(t => t.type === 'EXPENSE' && t.amount < 50).length;
         if (smallExpenses > 10) {
-            offlineTips.push(`🛒 Você fez ${smallExpenses} pequenas compras. Pequenos gastos somam muito no final do mês!`);
+            offlineTips.push(`Você fez ${smallExpenses} pequenas compras. Pequenos gastos somam muito no final do mês!`);
         }
         
         if (totals.bal > 0 && totals.inc > 0) {
             const savingsRate = (totals.bal / totals.inc * 100).toFixed(1);
-            offlineTips.push(`✅ Você conseguiu economizar ${savingsRate}% da sua renda este mês. Continue assim!`);
+            offlineTips.push(`Você conseguiu economizar ${savingsRate}% da sua renda este mês. Continue assim!`);
         }
         
         if (offlineTips.length === 0) {
-            offlineTips.push(`📊 Mantenha o controle! Registre todas as transações para ter insights melhores.`);
+            offlineTips.push(`Mantenha o controle! Registre todas as transações para ter insights melhores.`);
         }
         
-        setAiAdvice(`⚠️ Servidor da IA temporariamente indisponível.\n\n📌 DICAS RÁPIDAS DO NIKLAUS:\n\n${offlineTips.join('\n\n')}\n\n💡 Tente consultar novamente em alguns minutos para uma análise completa e personalizada!`);
-    } const generateAIAdvice = async () => {
-    if (aiLoading) return;
-
-    // Limpa qualquer intervalo de digitação anterior se existir
-    if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
-
-    setAiLoading(true);
-    setShowAiModal(true);
-    setIsTyping(true);
-    
-    // Frase de espera amigável enquanto o servidor acorda
-    setAiAdvice('Niklaus está analisando seus padrões financeiros... 📊💡');
-
-    try {
-        // Análise detalhada dos dados financeiros
-        const totalTransactions = currentTransactions.length;
-        const incomeTransactions = currentTransactions.filter(t => t.type === 'INCOME');
-        const expenseTransactions = currentTransactions.filter(t => t.type === 'EXPENSE');
-        
-        // Análise por método de pagamento
-        const pixUsage = currentTransactions.filter(t => t.method === 'PIX').length;
-        const creditUsage = currentTransactions.filter(t => t.method === 'CREDITO').length;
-        const debitUsage = currentTransactions.filter(t => t.method === 'DEBITO').length;
-        
-        // Análise de gastos por categoria (baseado em palavras-chave)
-        const foodExpenses = expenseTransactions.filter(t => 
-            t.description.toLowerCase().includes('mercado') || 
-            t.description.toLowerCase().includes('ifood') || 
-            t.description.toLowerCase().includes('restaurante') ||
-            t.description.toLowerCase().includes('lanche') ||
-            t.description.toLowerCase().includes('comida')
-        );
-        
-        const transportExpenses = expenseTransactions.filter(t => 
-            t.description.toLowerCase().includes('uber') || 
-            t.description.toLowerCase().includes('gasolina') || 
-            t.description.toLowerCase().includes('combustível') ||
-            t.description.toLowerCase().includes('transporte')
-        );
-        
-        const subscriptionExpenses = expenseTransactions.filter(t => 
-            t.description.toLowerCase().includes('netflix') || 
-            t.description.toLowerCase().includes('spotify') || 
-            t.description.toLowerCase().includes('assinatura') ||
-            t.description.toLowerCase().includes('mensalidade')
-        );
-        
-        // Análise de parcelamentos
-        const installmentExpenses = expenseTransactions.filter(t => t.totalInstallments > 1);
-        const totalInstallmentValue = installmentExpenses.reduce((sum, t) => sum + (t.totalValue || 0), 0);
-        
-        // Maior gasto
-        const biggestExpense = expenseTransactions.length > 0 
-            ? expenseTransactions.reduce((max, t) => t.amount > max.amount ? t : max, expenseTransactions[0])
-            : null;
-        
-        // Comparação com mês anterior
-        const variationIncome = previousMonthTotals.inc > 0 
-            ? ((totals.inc - previousMonthTotals.inc) / previousMonthTotals.inc * 100).toFixed(1)
-            : 0;
-        const variationExpense = previousMonthTotals.exp > 0 
-            ? ((totals.exp - previousMonthTotals.exp) / previousMonthTotals.exp * 100).toFixed(1)
-            : 0;
-
-        const summary = `
-Você é o Niklaus, um consultor financeiro especialista, bem-humorado e direto. Analise os dados abaixo e dê conselhos PRÁTICOS e PERSONALIZADOS para ${profileName || 'o usuário'}.
-
-📊 DADOS FINANCEIROS DETALHADOS:
-
-RESUMO GERAL:
-- Entradas: R$ ${totals.inc.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-- Saídas: R$ ${totals.exp.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-- Saldo: R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-- Total de transações: ${totalTransactions}
-
-COMPARAÇÃO COM MÊS ANTERIOR:
-- Variação nas entradas: ${variationIncome > 0 ? '+' : ''}${variationIncome}%
-- Variação nas saídas: ${variationExpense > 0 ? '+' : ''}${variationExpense}%
-
-ANÁLISE DE PAGAMENTOS:
-- Uso de PIX: ${pixUsage} transações
-- Uso de Crédito: ${creditUsage} transações (${((creditUsage/totalTransactions)*100).toFixed(0)}% do total)
-- Uso de Débito: ${debitUsage} transações
-
-CATEGORIAS DETECTADAS:
-- Gastos com Alimentação: ${foodExpenses.length} transações (R$ ${foodExpenses.reduce((sum, t) => sum + t.amount, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})
-- Gastos com Transporte: ${transportExpenses.length} transações (R$ ${transportExpenses.reduce((sum, t) => sum + t.amount, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})
-- Assinaturas/Serviços: ${subscriptionExpenses.length} transações (R$ ${subscriptionExpenses.reduce((sum, t) => sum + t.amount, 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})
-
-PARCELAMENTOS:
-- Total em parcelamentos: R$ ${totalInstallmentValue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-- Quantidade de compras parceladas: ${installmentExpenses.length}
-
-${biggestExpense ? `MAIOR GASTO DO PERÍODO:
-- "${biggestExpense.description}": R$ ${biggestExpense.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-` : ''}
-
-ÚLTIMAS 5 TRANSAÇÕES:
-${currentTransactions.slice(0, 5).map((t, i) => `${i+1}. ${t.description} - R$ ${t.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${t.type === 'INCOME' ? 'Entrada' : 'Saída'})`).join('\n')}
-
-🎯 INSTRUÇÕES PARA NIKLAUS:
-1. Cumprimente ${profileName || 'o usuário'} de forma descontraída
-2. Faça uma análise HONESTA da situação financeira
-3. Dê 3-4 conselhos PRÁTICOS e ESPECÍFICOS baseados nos dados acima
-4. Se houver problemas (saldo negativo, muito crédito, gastos altos), seja direto mas motivador
-5. Se estiver indo bem, elogie mas sugira como melhorar ainda mais
-6. Mencione padrões específicos que você identificou (ex: "percebi que você gastou bastante com alimentação")
-7. Sugira uma META concreta para o próximo mês
-8. Termine com uma frase motivacional curta e impactante
-
-IMPORTANTE: Seja ESPECÍFICO, use os números reais, cite as categorias detectadas, e dê conselhos que a pessoa possa aplicar HOJE.
-`;
-
-        const res = await fetch("https://controlefinanceiro-naip.onrender.com/gemini", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                mensagem: summary,
-                nomeUsuario: profileName
-            })
-        });
-
-        if (!res.ok) throw new Error(`Erro: ${res.status}`);
-
-        const data = await res.json();
-        const textoCompleto = data.resposta || "Não consegui analisar agora, tente novamente em alguns instantes.";
-
-        // EFEITO MÁQUINA DE ESCREVER
-        setAiAdvice(""); // Limpa a frase de espera
-        let i = 0;
-        typingIntervalRef.current = setInterval(() => {
-            setAiAdvice((prev) => prev + textoCompleto.charAt(i));
-            i++;
-            if (i >= textoCompleto.length) {
-                clearInterval(typingIntervalRef.current);
-                setIsTyping(false);
-            }
-        }, 15); // Velocidade da digitação (15ms por letra)
-
-    } catch (err) {
-        console.error("Erro na IA:", err);
-        setIsTyping(false);
-        
-        // Dicas offline personalizadas baseadas nos dados reais
-        const offlineTips = [];
-        
-        if (totals.bal < 0) {
-            offlineTips.push(`💰 Atenção! Seu saldo está negativo (R$ ${Math.abs(totals.bal).toLocaleString('pt-BR')}). Priorize reduzir despesas essenciais.`);
-        }
-        
-        if (channelAnalysis.CREDITO && channelAnalysis.CREDITO.exp > totals.exp * 0.5) {
-            offlineTips.push(`💳 ${Math.round((channelAnalysis.CREDITO.exp / totals.exp) * 100)}% dos gastos são no crédito. Cuidado com o limite e juros!`);
-        }
-        
-        if (previousMonthTotals.exp > 0 && totals.exp > previousMonthTotals.exp * 1.2) {
-            offlineTips.push(`📈 Seus gastos aumentaram ${Math.round(((totals.exp / previousMonthTotals.exp - 1) * 100))}% comparado ao mês passado. Revise suas despesas.`);
-        }
-        
-        const smallExpenses = currentTransactions.filter(t => t.type === 'EXPENSE' && t.amount < 50).length;
-        if (smallExpenses > 10) {
-            offlineTips.push(`🛒 Você fez ${smallExpenses} pequenas compras. Pequenos gastos somam muito no final do mês!`);
-        }
-        
-        if (totals.bal > 0 && totals.inc > 0) {
-            const savingsRate = (totals.bal / totals.inc * 100).toFixed(1);
-            offlineTips.push(`✅ Você conseguiu economizar ${savingsRate}% da sua renda este mês. Continue assim!`);
-        }
-        
-        if (offlineTips.length === 0) {
-            offlineTips.push(`📊 Mantenha o controle! Registre todas as transações para ter insights melhores.`);
-        }
-        
-        setAiAdvice(`⚠️ Servidor da IA temporariamente indisponível.\n\n📌 DICAS RÁPIDAS DO NIKLAUS:\n\n${offlineTips.join('\n\n')}\n\n💡 Tente consultar novamente em alguns minutos para uma análise completa e personalizada!`);
+        setAiAdvice(`Servidor da IA temporariamente indisponível.\n\nDICAS RÁPIDAS DO NIKLAUS:\n\n${offlineTips.join('\n\n')}\n\nTente consultar novamente em alguns minutos para uma análise completa e personalizada!`);
     } finally {
         setAiLoading(false);
     }
 };
-```
 
----
 
-## 🎯 **Melhorias Implementadas:**
+            /**
+             * Upload de foto de perfil (conversão para base64)
+             */
+            const handlePhotoUpload = (e, target) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (target === 'principal') setProfilePhoto(reader.result);
+                    else setSecondaryPhoto(reader.result);
+                };
+                reader.readAsDataURL(file);
+            };
 
-### **1. Análise Muito Mais Detalhada:**
-- ✅ Detecta automaticamente categorias de gastos (alimentação, transporte, assinaturas)
-- ✅ Analisa uso de cada método de pagamento
-- ✅ Identifica o maior gasto do período
-- ✅ Calcula valor total em parcelamentos
-- ✅ Compara com mês anterior (variação %)
+            /**
+             * Envio de feedback/sugestão
+             */
+            const [suggestions, setSuggestions] = React.useState([]); // Para armazenar a lista (visível ao admin)
 
-### **2. Prompt Otimizado para IA:**
-- ✅ Envia dados estruturados e detalhados
-- ✅ Instrui a IA a ser específica e prática
-- ✅ Pede análise honesta com números reais
-- ✅ Solicita meta concreta para próximo mês
+// Função para o Usuário enviar
+const sendSuggestion = async () => {
+  if (!suggestionText.trim() || !user?.id) return;
 
-### **3. Dicas Offline Melhoradas:**
-- ✅ Baseadas nos dados reais do usuário
-- ✅ Personalizadas por situação (saldo negativo, muito crédito, etc)
-- ✅ Cálculo de taxa de economia
-- ✅ Alertas específicos
+  setSendingSuggestion(true);
 
-### **4. Experiência do Usuário:**
-- ✅ Mensagem de carregamento mais clara
-- ✅ Efeito de digitação mantido
-- ✅ Fallback inteligente se servidor estiver offline
+  try {
+    await addDoc(collection(db, "suggestions"), {
+      userId: user.id,
+      userName: profileName || "Usuário",
+      userEmail: user.email || "",
+      message: suggestionText.trim(),
+      createdAt: serverTimestamp(),
 
----
+      // campos usados na comunicação
+      reply: "",
+      repliedAt: null,
+      replyViewed: false
+    });
 
-## 📊 **Exemplo de Resposta que a IA Agora Gera:**
-```
-Olá João! 👋
+    setSuggestionText("");
+    alert("Obrigado! Sua mensagem foi enviada com sucesso!");
+  } catch (err) {
+    console.error("Erro ao enviar sugestão:", err);
+    alert("Erro ao enviar a mensagem. Tente novamente.");
+  } finally {
+    setSendingSuggestion(false);   // ✅ FECHADO CORRETAMENTE
+  }
+};
 
-Analisando suas finanças, vejo que você movimentou R$ 8.500 este mês. Seu saldo de R$ 1.200 está positivo, mas percebi alguns pontos importantes:
-
-🔴 ALERTAS:
-- 65% dos seus gastos foram no crédito (R$ 4.700). Cuidado com o limite!
-- Detectei R$ 850 em gastos com alimentação (iFood, mercado). Considere cozinhar mais em casa.
-- Você tem R$ 2.400 em parcelamentos ativos. Evite novas compras parceladas.
-
-✅ PONTOS POSITIVOS:
-- Suas entradas cresceram 12% em relação ao mês passado
-- Taxa de economia de 14% está boa!
-
-💡 AÇÕES PRÁTICAS:
-1. Reduza pedidos de delivery para 2x por semana (economia de ~R$ 300/mês)
-2. Migre pelo menos 50% dos gastos de crédito para débito
-3. Congele novos parcelamentos pelos próximos 2 meses
-
-🎯 META PRÓXIMO MÊS: Economizar R$ 1.500 (17% da renda)
-
-"Pequenos ajustes hoje = grandes resultados amanhã!" 💪
 
 // Função exclusiva para o Niklaus responder
 const sendReply = async (sugId, replyText) => {

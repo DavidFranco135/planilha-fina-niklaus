@@ -689,20 +689,32 @@ const generateAIAdvice = async () => {
     // Limpa qualquer intervalo de digitação anterior se existir
     if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
 
+    // Mostra modal e inicializa animações
     setAiLoading(true);
     setShowAiModal(true);
     setIsTyping(true);
-    
+
     // Frase de espera amigável enquanto o servidor acorda
     setAiAdvice('Niklaus está consultando os gráficos e preparando uma piada... 📈');
 
+    // 🚨 ALERTA RÁPIDO DE GASTOS > 70%
+    const totalExpenses = currentTransactions
+        .filter(t => t.type === 'EXPENSE')
+        .reduce((a, b) => a + b.amount, 0);
+
+    if (totalExpenses > totals.inc * 0.7) {
+        // Exibe alerta rápido dentro do modal
+        setAiAdvice(prev => prev + "\n\n⚠️ Cuidado! Você está gastando mais de 70% da sua receita.");
+    }
+
     try {
+        // Resumo financeiro para a IA
         const summary = `
-            Resumo Financeiro de ${profileName || 'Usuário'}:
-            Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
-            Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
-            Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}
-            Últimas Transações: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
+Resumo Financeiro de ${profileName || 'Usuário'}:
+Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
+Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
+Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}
+Últimas Transações: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
         `;
 
         const res = await fetch("https://controlefinanceiro-naip.onrender.com/gemini", {
@@ -720,7 +732,7 @@ const generateAIAdvice = async () => {
         const textoCompleto = data.resposta || "Não consegui analisar agora, tente novamente.";
 
         // EFEITO MÁQUINA DE ESCREVER
-        setAiAdvice(""); // Limpa a frase de espera
+        setAiAdvice(""); // Limpa a frase de espera (mantendo só o alerta se necessário)
         let i = 0;
         typingIntervalRef.current = setInterval(() => {
             setAiAdvice((prev) => prev + textoCompleto.charAt(i));
@@ -739,6 +751,7 @@ const generateAIAdvice = async () => {
         setAiLoading(false);
     }
 };
+
 
 
             /**
@@ -1128,14 +1141,7 @@ const handleAppShare = async () => {
     renderCharts(filtered);
 }
 
-function generateAIAdvice() {
-    const totalExpenses = currentTransactions.filter(t => t.type === 'EXPENSE').reduce((a,b)=>a+b.amount,0);
-    if(totalExpenses > totals.inc*0.7){
-        alert("⚠️ Cuidado! Você está gastando mais de 70% da sua receita.");
-    } else {
-        alert("✅ Ótimo! Seus gastos estão controlados.");
-    }
-}
+
 
             return html`
                 <div className="min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">

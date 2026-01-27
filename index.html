@@ -2029,6 +2029,35 @@ const automaticTips = useMemo(() => {
                 <i className="fas fa-share-alt absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12 transition-transform duration-500 group-hover:rotate-0"></i>
             </div>
 
+            ${user.email !== 'davidbhmg147@gmail.com' ? html`
+                <!-- NOVA ABA: MENSAGENS DO ADMIN PARA USUÁRIOS -->
+                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-emerald-600/20 text-emerald-400 rounded-xl flex items-center justify-center">
+                            <i className="fas fa-envelope"></i>
+                        </div>
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest">Mensagens do Administrador</h3>
+                    </div>
+
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
+                        ${userSuggestions.filter(sug => sug.directMessage).length === 0 ? html`
+                            <div className="p-8 text-center">
+                                <i className="fas fa-inbox text-4xl text-slate-700 mb-3"></i>
+                                <p className="text-[10px] text-slate-500 uppercase tracking-widest">Nenhuma mensagem ainda</p>
+                            </div>
+                        ` : userSuggestions.filter(sug => sug.directMessage).map(msg => html`
+                            <div key=${msg.id} className="p-4 bg-gradient-to-br from-emerald-600/10 to-emerald-800/10 rounded-2xl border border-emerald-600/20">
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-[8px] font-black text-emerald-400 uppercase">Administrador</span>
+                                    <span className="text-[7px] text-slate-500 uppercase">${msg.createdAt?.toDate ? new Date(msg.createdAt.toDate()).toLocaleDateString('pt-BR') : ''}</span>
+                                </div>
+                                <p className="text-xs text-slate-200 leading-relaxed">${msg.message}</p>
+                            </div>
+                        `)}
+                    </div>
+                </div>
+            ` : ''}
+
             <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -2050,7 +2079,7 @@ const automaticTips = useMemo(() => {
                         ${adminTab === 'inbox' ? html`
                             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                                 ${adminSuggestions.length === 0 ? html`<p className="text-[10px] text-slate-500 text-center uppercase py-4">Nenhuma sugestão nova.</p>` : ''}
-                                ${adminSuggestions.map(sug => html`
+                                ${adminSuggestions.filter(sug => !sug.directMessage).map(sug => html`
                                     <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
                                         <div className="flex justify-between mb-2">
                                             <span className="text-[8px] font-black text-violet-400 uppercase">${sug.userName || 'Usuário'}</span>
@@ -2082,21 +2111,46 @@ const automaticTips = useMemo(() => {
                                     <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Selecionar Usuário</label>
                                     <select id="select-user-direct" className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-[10px] text-white font-bold outline-none focus:ring-1 focus:ring-violet-500">
                                         <option value="">Selecione um usuário...</option>
-                                        ${allUsers.map(u => html`<option value=${u.id}>${u.appName || u.email} (${u.email})</option>`)}
+                                        ${allUsers.filter(u => u.email !== 'davidbhmg147@gmail.com').map(u => html`<option value=${u.id}>${u.appName || u.email} (${u.email})</option>`)}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="text-[8px] font-black text-slate-500 uppercase ml-1 tracking-widest">Mensagem</label>
                                     <textarea id="direct-msg-text" className="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white min-h-[80px]" placeholder="Escreva a mensagem direta..."></textarea>
                                 </div>
-                                <button onClick=${() => {
+                                <button onClick=${async () => {
                                     const userId = document.getElementById('select-user-direct').value;
-                                    const msg = document.getElementById('direct-msg-text').value;
-                                    if(userId && msg) {
-                                        sendDirectMessage(userId, msg);
+                                    const msg = document.getElementById('direct-msg-text').value.trim();
+                                    
+                                    if (!userId) {
+                                        alert('Selecione um usuário');
+                                        return;
+                                    }
+                                    
+                                    if (!msg) {
+                                        alert('Digite uma mensagem');
+                                        return;
+                                    }
+
+                                    try {
+                                        await addDoc(collection(db, "suggestions"), {
+                                            userId: userId,
+                                            userName: allUsers.find(u => u.id === userId)?.appName || 'Usuário',
+                                            userEmail: allUsers.find(u => u.id === userId)?.email || '',
+                                            message: msg,
+                                            directMessage: true,
+                                            createdAt: serverTimestamp(),
+                                            reply: "",
+                                            repliedAt: null,
+                                            replyViewed: false
+                                        });
+                                        
                                         document.getElementById('direct-msg-text').value = '';
-                                    } else {
-                                        alert('Selecione um usuário e digite a mensagem');
+                                        document.getElementById('select-user-direct').value = '';
+                                        alert('Mensagem enviada com sucesso!');
+                                    } catch (err) {
+                                        console.error('Erro ao enviar mensagem:', err);
+                                        alert('Erro ao enviar mensagem. Tente novamente.');
                                     }
                                 }} className="w-full py-4 bg-violet-600 text-white font-black rounded-xl text-[10px] uppercase">Enviar Mensagem Direta</button>
                             </div>
@@ -2106,10 +2160,11 @@ const automaticTips = useMemo(() => {
                                     <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800/50 text-[10px]">
                                         <div className="flex justify-between text-slate-500 mb-1">
                                             <span className="font-black text-violet-500">${m.userName || 'Sistema'}</span>
-                                            <span>${new Date(m.createdAt?.toDate()).toLocaleString()}</span>
+                                            <span>${m.createdAt?.toDate ? new Date(m.createdAt.toDate()).toLocaleString() : ''}</span>
                                         </div>
                                         <p className="text-slate-300 italic">" ${m.message} "</p>
                                         ${m.reply && html`<p className="mt-1 text-emerald-400 font-bold border-l-2 border-emerald-400 pl-2">R: ${m.reply}</p>`}
+                                        ${m.directMessage && html`<span className="inline-block mt-2 px-2 py-1 bg-emerald-600/20 text-emerald-400 text-[8px] font-black uppercase rounded">Mensagem Direta</span>`}
                                     </div>
                                 `)}
                             </div>

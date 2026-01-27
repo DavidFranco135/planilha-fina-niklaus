@@ -389,7 +389,7 @@
     // Limpa listener anterior
     unsubSugg();
 
-   if (isUserAdmin) {
+ if (isUserAdmin) {
   // 📥 Admin vê TODAS as sugestões
   const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
   unsubSugg = onSnapshot(qs, (snap) => {
@@ -419,6 +419,7 @@
     setUnreadCount(unread);
   });
 }
+}); // ← FECHA O onSnapshot DO USUÁRIO
 
 // 🔹 Listener das TRANSAÇÕES
 const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
@@ -437,36 +438,36 @@ return () => {
   unsubSugg();
   unsubUsersList();
 };
-            // Efeito para checar persistência de login ao carregar
-            useEffect(() => {
-                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
-                if (sid) return startDataSync(sid);
-                setLoading(false);
-            }, []);
+}; // ← FECHA A FUNÇÃO startDataSync
 
-            // Efeito para fechar dropdown de notificações ao clicar fora
-            useEffect(() => {
-                const handleClickOutside = (event) => {
-                    if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
-                        setShowNotificationList(false);
-                    }
-                };
-                document.addEventListener('mousedown', handleClickOutside);
-                return () => document.removeEventListener('mousedown', handleClickOutside);
-            }, []);
+// Efeito para checar persistência de login ao carregar
+useEffect(() => {
+    const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+    if (sid) return startDataSync(sid);
+    setLoading(false);
+}, []);
 
-            // Notificações formatadas (respostas do admin)
-            // Notificações formatadas (respostas do admin)
+// Efeito para fechar dropdown de notificações ao clicar fora
+useEffect(() => {
+    const handleClickOutside = (event) => {
+        if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
+            setShowNotificationList(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+}, []);
+
+// Notificações formatadas (respostas do admin)
 const notifications = useMemo(() => {
     return [...userSuggestions]
         .filter(sug => sug.reply || sug.directMessage) // ADICIONADO: sug.directMessage
         .sort((a, b) => (b.repliedAt?.seconds || b.createdAt?.seconds || 0) - (a.repliedAt?.seconds || a.createdAt?.seconds || 0));
 }, [userSuggestions]);
 
-            /**
-             * Lógica de Autenticação (Login, Cadastro, Recuperação)
-             */
-           
+/**
+ * Lógica de Autenticação (Login, Cadastro, Recuperação)
+ */
 
 const handleAuth = async (e) => {
     if (e) e.preventDefault();

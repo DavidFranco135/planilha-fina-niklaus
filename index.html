@@ -246,16 +246,17 @@
         /**
          * Componente Principal da Aplicação
          */
-        const App = () => {
-    // Estados Principais de Usuário e UI
+       // Componente Principal da Aplicação
+const App = () => {
+    // Estados Principais
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('dashboard');
     const [transactions, setTransactions] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    
-    // Estados do Painel Admin (ADICIONADOS PARA CORREÇÃO)
+
+    // Estados Admin
     const [adminTab, setAdminTab] = useState('inbox'); 
     const [allUsers, setAllUsers] = useState([]); 
     const [allMessagesHistory, setAllMessagesHistory] = useState([]);
@@ -266,19 +267,19 @@
     const [methodFilter, setMethodFilter] = useState('ALL');
     const [showValues, setShowValues] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
-    
+
     // Modos de Balanço
     const [balanceMode, setBalanceMode] = useState('MONTHLY');
     const [accumStart, setAccumStart] = useState('');
     const [accumEnd, setAccumEnd] = useState('');
     const [showCustomPeriod, setShowCustomPeriod] = useState(false);
 
-    // Estados da IA
+    // IA
     const [aiAdvice, setAiAdvice] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
     const [showAiModal, setShowAiModal] = useState(false);
 
-    // Referências de UI
+    // Refs
     const fileInputPrincipalRef = useRef(null);
     const fileInputSecondaryRef = useRef(null);
     const notificationDropdownRef = useRef(null);
@@ -287,15 +288,14 @@
     const comparisonChartRef = useRef(null);
     const channelChartRef = useRef(null);
 
-
-    // Estado para nova transação
+    // Nova transação
     const [newTx, setNewTx] = useState({ 
         description: '', amount: '', type: 'INCOME', 
         date: new Date().toISOString().split('T')[0],
         method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
     });
 
-    // Estados de Autenticação
+    // Autenticação
     const [email, setEmail] = useState('');
     const [pass, setPass] = useState('');
     const [showPass, setShowPass] = useState(false);
@@ -304,16 +304,14 @@
     const [authLoading, setAuthLoading] = useState(false);
     const [keepConnected, setKeepConnected] = useState(true);
 
-    // Perfil das Contas
+    // Perfil
     const [profileName, setProfileName] = useState('');
     const [secondaryName, setSecondaryName] = useState('');
     const [profilePhoto, setProfilePhoto] = useState('');
     const [secondaryPhoto, setSecondaryPhoto] = useState('');
-
-    // Controle de visualização de conta secundária no extrato
     const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
 
-    // Sugestões e Notificações
+    // Sugestões e notificações
     const [suggestionText, setSuggestionText] = useState('');
     const [sendingSuggestion, setSendingSuggestion] = useState(false);
     const [userSuggestions, setUserSuggestions] = useState([]);
@@ -323,22 +321,25 @@
 
     const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'davidbhmg147@gmail.com', [user]);
 
-    // Funções de feedback sonoro
+    // Sons
+    const bellSound = new Audio('https://assets.mixkit.co/active_storage/sfx/3005/3005-preview.mp3');
+    const trashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1474/1474-preview.mp3');
+    trashSound.volume = 0.3;
+
     const playMoneySfx = () => {
         if (soundEnabled) {
             bellSound.currentTime = 0;
-            bellSound.play().catch(e => console.log('Audio play blocked'));
+            bellSound.play().catch(() => {});
         }
     };
-
     const playTrashSfx = () => {
         if (soundEnabled) {
             trashSound.currentTime = 0;
-            trashSound.play().catch(e => console.log('Audio play blocked'));
+            trashSound.play().catch(() => {});
         }
     };
 
-    // FUNÇÃO PARA ENVIAR MENSAGEM DIRETA (ADMIN)
+    // Função enviar mensagem direta (Admin)
     const sendDirectMessage = async (userId, msg) => {
         try {
             const response = await fetch('https://SUA-URL-DO-BACKEND.com/enviar-mensagem', {
@@ -346,170 +347,136 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, mensagem: msg })
             });
-            if (response.ok) {
-                alert("Mensagem enviada com sucesso!");
-            }
+            if (response.ok) alert("Mensagem enviada com sucesso!");
         } catch (err) {
             alert("Erro ao conectar com o servidor.");
         }
     };
 
-    /**
-     * Inicia a sincronização de dados em tempo real com o Firestore
-     */
+    // Sync Firestore
     const startDataSync = (sid) => {
-  setLoading(true);
+        setLoading(true);
+        let unsubSugg = () => {};
+        let unsubUsersList = () => {};
 
-  let unsubSugg = () => {};
-  let unsubUsersList = () => {};
+        const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+            if (!s.exists()) { handleLogout(); return; }
 
-  // 🔹 Listener do USUÁRIO
-  const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-    if (!s.exists()) {
-      handleLogout();
-      return;
-    }
+            const userData = { id: s.id, ...s.data() };
+            const isUserAdmin = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com';
 
-    const userData = { id: s.id, ...s.data() };
-    const adminEmail = "davidbhmg147@gmail.com";
-    const isUserAdmin = userData.email?.toLowerCase() === adminEmail;
+            if (!isUserAdmin && userData.status !== 'paid') {
+                alert("Acesso bloqueado. Efetue o pagamento.");
+                handleLogout();
+                return;
+            }
 
-    // 🔐 Bloqueio de acesso se não estiver pago (exceto admin)
-    if (!isUserAdmin && userData.status !== 'paid') {
-      alert("Acesso bloqueado. Efetue o pagamento.");
-      handleLogout();
-      return;
-    }
+            setUser(userData);
+            setProfileName(userData.appName || "");
+            setSecondaryName(userData.secondaryName || "");
+            setProfilePhoto(userData.photoURL || "");
+            setSecondaryPhoto(userData.secondaryPhotoURL || "");
+            setSoundEnabled(userData.soundEnabled ?? true);
 
-    // 🔥 SETA O USUÁRIO
-    setUser(userData);
+            unsubSugg();
 
-    // 🔥 SETA OS DADOS DE PERFIL (ERA ISSO QUE FALTAVA)
-    setProfileName(userData.appName || "");
-    setSecondaryName(userData.secondaryName || "");
-    setProfilePhoto(userData.photoURL || "");
-    setSecondaryPhoto(userData.secondaryPhotoURL || "");
-    setSoundEnabled(userData.soundEnabled ?? true);
+            if (isUserAdmin) {
+                const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+                unsubSugg = onSnapshot(qs, (snap) => {
+                    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAdminSuggestions(docs);
+                    setAllMessagesHistory(docs);
+                });
 
-    // Limpa listener anterior
-    unsubSugg();
+                const qu = query(collection(db, "users"));
+                unsubUsersList = onSnapshot(qu, (snap) => {
+                    setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
+            } else {
+                const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+                unsubSugg = onSnapshot(qsUser, (snap) => {
+                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setUserSuggestions(list);
+                    const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
+                    setUnreadCount(unread);
+                });
+            }
+        });
 
-    if (isUserAdmin) {
-      // 📥 Admin vê TODAS as sugestões
-      const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-      unsubSugg = onSnapshot(qs, (snap) => {
-        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setAdminSuggestions(docs);
-        setAllMessagesHistory(docs);
-      });
+        const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
+        const unsubTx = onSnapshot(qTx, (s) => {
+            const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
+            setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+            setLoading(false);
+        });
 
-      // 👥 Admin vê TODOS os usuários
-      const qu = query(collection(db, "users"));
-      unsubUsersList = onSnapshot(qu, (snap) => {
-        setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      });
+        return () => { unsubUser(); unsubTx(); unsubSugg(); unsubUsersList(); };
+    };
 
-    } else {
-      // 📩 Usuário vê só as próprias sugestões
-      const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-      unsubSugg = onSnapshot(qsUser, (snap) => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(list);
+    // Checar persistência de login
+    useEffect(() => {
+        const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+        if (sid) return startDataSync(sid);
+        setLoading(false);
+    }, []);
 
-        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
-        setUnreadCount(unread);
-      });
-    }
-  });
+    // Fechar dropdown ao clicar fora
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
+                setShowNotificationList(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
-  // 🔹 Listener das TRANSAÇÕES
-  const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
-  const unsubTx = onSnapshot(qTx, (s) => {
-    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-    setTransactions(
-      docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-    );
-    setLoading(false);
-  });
-
-  // 🔹 Cleanup
-  return () => {
-    unsubUser();
-    unsubTx();
-    unsubSugg();
-    unsubUsersList();
-  };
-};
-
-
-
-            // Efeito para checar persistência de login ao carregar
-            useEffect(() => {
-                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
-                if (sid) return startDataSync(sid);
-                setLoading(false);
-            }, []);
-
-            // Efeito para fechar dropdown de notificações ao clicar fora
-            useEffect(() => {
-                const handleClickOutside = (event) => {
-                    if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
-                        setShowNotificationList(false);
-                    }
-                };
-                document.addEventListener('mousedown', handleClickOutside);
-                return () => document.removeEventListener('mousedown', handleClickOutside);
-            }, []);
-
-            // Notificações formatadas (respostas do admin)
-            const notifications = useMemo(() => {
-                return [...userSuggestions]
-                    .filter(sug => sug.reply)
-                    .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
-            }, [userSuggestions]);
+    // Notificações ordenadas
+    const notifications = useMemo(() => {
+        return [...userSuggestions]
+            .filter(sug => sug.reply)
+            .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
+    }, [userSuggestions]);
+;
 
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
              */
            
 
+// --- AUTENTICAÇÃO ---
 const handleAuth = async (e) => {
     if (e) e.preventDefault();
     
-    // Validação inicial
     if (!email || (!isRecovering && !pass)) {
         alert("Preencha os campos corretamente.");
         return;
     }
 
     setAuthLoading(true);
-    
+
     try {
-        // 'auth' e 'db' já foram inicializados no topo do script
         const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
         const userRef = doc(db, "users", safeId);
         const userSnap = await getDoc(userRef);
 
-        // --- MODO: RECUPERAÇÃO DE SENHA ---
+        // Recuperação de senha
         if (isRecovering) {
             auth.languageCode = 'pt';
             await sendPasswordResetEmail(auth, email.trim());
             alert("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
             setIsRecovering(false);
         } 
-        
-        // --- MODO: CADASTRO ---
+        // Cadastro
         else if (isRegistering) {
             if (userSnap.exists()) {
                 alert("Este e-mail já está cadastrado.");
             } else {
-                // Cria no Authentication
                 const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
-                // Salva no Firestore
                 await setDoc(userRef, {
                     uid: cred.user.uid,
                     email: email.trim(),
-                    password: pass, // Senha em texto para o seu sistema de login legado
+                    password: pass,
                     status: 'pending',
                     paid: false,
                     createdAt: serverTimestamp()
@@ -518,33 +485,25 @@ const handleAuth = async (e) => {
                 setIsRegistering(false);
             }
         } 
-        
-        // --- MODO: LOGIN COM SINCRONIZAÇÃO DE SENHA ---
+        // Login
         else {
             try {
-                // 1. Tenta logar no Firebase Auth (valida a senha nova se tiver sido resetada)
                 await signInWithEmailAndPassword(auth, email.trim(), pass);
-                
+
                 if (userSnap.exists()) {
                     const userData = userSnap.data();
 
-                    // 2. SINCRONIZAÇÃO: Se a senha digitada for diferente da que está no Firestore, atualiza o Firestore
                     if (userData.password !== pass) {
                         await updateDoc(userRef, { password: pass });
-                        console.log("Senha sincronizada no banco de dados.");
+                        console.log("Senha sincronizada no Firestore.");
                     }
 
-                    // 3. Verificação de Acesso (Pagamento ou Admin)
                     if (userData.paid || userData.status === 'paid' || email.toLowerCase() === 'niklaus') {
                         const storage = keepConnected ? localStorage : sessionStorage;
                         storage.setItem('belaju_sid', safeId);
-                        
-                        // Inicia sincronização de dados do app
-                        if (typeof startDataSync === 'function') {
-                            startDataSync(safeId);
-                        } else {
-                            window.location.reload();
-                        }
+
+                        if (typeof startDataSync === 'function') startDataSync(safeId);
+                        else window.location.reload();
                     } else {
                         alert("Acesso restrito. Efetue o pagamento para liberar.");
                     }
@@ -557,181 +516,166 @@ const handleAuth = async (e) => {
             }
         }
     } catch (err) {
-        console.error("Erro Geral:", err);
+        console.error("Erro geral:", err);
         alert("Ocorreu um erro: " + err.message);
     } finally {
         setAuthLoading(false);
     }
 };
-            /**
-             * Limpa dados de sessão ao sair
-             */
-            const handleLogout = () => {
-                localStorage.removeItem('belaju_sid');
-                sessionStorage.removeItem('belaju_sid');
-                setUser(null);
-                setTransactions([]);
-                setLoading(false);
-            };
 
-            /**
-             * Exclusão de uma transação individual
-             */
-            const handleDeleteTransaction = async (e, id) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (confirm("Deseja realmente excluir este registro?")) {
-                    try {
-                        await deleteDoc(doc(db, "transactions", id));
-                        playTrashSfx();
-                    } catch (err) {
-                        alert("Erro ao excluir registro.");
-                    }
-                }
-            };
+// --- LOGOUT ---
+const handleLogout = () => {
+    localStorage.removeItem('belaju_sid');
+    sessionStorage.removeItem('belaju_sid');
+    setUser(null);
+    setTransactions([]);
+    setLoading(false);
+};
 
-            /**
-             * Limpa todos os dados financeiros do usuário
-             */
-            const handleClearFinancialData = async () => {
-                if (confirm("ATENÇÃO: Deseja realmente excluir TODOS os dados financeiros e transações? Esta ação é irreversível.")) {
-                    if (confirm("Confirmação Final: Apagar todo o seu histórico financeiro?")) {
-                        setLoading(true);
-                        try {
-                            const batch = writeBatch(db);
-                            const q = query(collection(db, "transactions"), where("userId", "==", user.id));
-                            const snapshot = await getDocs(q);
-                            snapshot.forEach((d) => batch.delete(d.ref));
-                            await batch.commit();
-                            playTrashSfx();
-                            alert("Todos os dados financeiros foram removidos.");
-                        } catch (e) {
-                            alert("Erro ao limpar dados financeiros.");
-                        } finally {
-                            setLoading(false);
-                        }
-                    }
-                }
-            };
+// --- DELETE TRANSACTION ---
+const handleDeleteTransaction = async (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Deseja realmente excluir este registro?")) return;
 
-            /**
-             * Exclusão total da conta e dados vinculados
-             */
-            const handleDeleteAccount = async () => {
-                if (confirm("ATENÇÃO: Isso excluirá permanentemente sua conta e todos os seus dados. Deseja continuar?")) {
-                    const sid = user.id;
-                    setLoading(true);
-                    try {
-                        const batch = writeBatch(db);
-                        // Apaga transações
-                        const q = query(collection(db, "transactions"), where("userId", "==", sid));
-                        const snapshot = await getDocs(q);
-                        snapshot.forEach((d) => batch.delete(d.ref));
-                        
-                        // Apaga sugestões
-                        const sugQ = query(collection(db, "suggestions"), where("userId", "==", sid));
-                        const sugSnapshot = await getDocs(sugQ);
-                        sugSnapshot.forEach((d) => batch.delete(d.ref));
+    try {
+        await deleteDoc(doc(db, "transactions", id));
+        playTrashSfx();
+    } catch {
+        alert("Erro ao excluir registro.");
+    }
+};
 
-                        // Apaga documento do usuário
-                        batch.delete(doc(db, "users", sid));
-                        await batch.commit();
-                        playTrashSfx();
-                        alert("Conta excluída com sucesso.");
-                        handleLogout();
-                    } catch (e) {
-                        alert("Erro ao excluir conta.");
-                    } finally {
-                        setLoading(false);
-                    }
-                }
-            };
+// --- CLEAR ALL FINANCIAL DATA ---
+const handleClearFinancialData = async () => {
+    if (!confirm("Deseja realmente excluir TODOS os dados financeiros?")) return;
+    if (!confirm("Confirmação final: apagar histórico financeiro?")) return;
 
-            /**
-             * Navegação entre meses no filtro
-             */
-            const changeMonth = (offset) => {
-                const [year, month] = filterMonth.split('-').map(Number);
-                const date = new Date(year, month - 1 + offset, 1);
-                setFilterMonth(date.toISOString().substring(0, 7));
-                if (!accumStart || !accumEnd) {
-                    setBalanceMode('MONTHLY');
-                }
-            };
+    setLoading(true);
+    try {
+        const batch = writeBatch(db);
+        const q = query(collection(db, "transactions"), where("userId", "==", user.id));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        playTrashSfx();
+        alert("Todos os dados financeiros foram removidos.");
+    } catch {
+        alert("Erro ao limpar dados financeiros.");
+    } finally {
+        setLoading(false);
+    }
+};
 
-            // Funções de abertura de modais de edição/criação
-            const openEdit = (tx) => {
-                setEditingId(tx.id);
-                setNewTx({ 
-                    ...tx, 
-                    amount: (tx.amount || 0).toString().replace('.', ','),
-                    date: tx.date ? tx.date.split('T')[0] : new Date().toISOString().split('T')[0]
+// --- DELETE ACCOUNT ---
+const handleDeleteAccount = async () => {
+    if (!confirm("Excluir permanentemente a conta?")) return;
+
+    const sid = user.id;
+    setLoading(true);
+    try {
+        const batch = writeBatch(db);
+
+        const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
+        const snapshotTx = await getDocs(qTx);
+        snapshotTx.forEach(d => batch.delete(d.ref));
+
+        const qSug = query(collection(db, "suggestions"), where("userId", "==", sid));
+        const snapshotSug = await getDocs(qSug);
+        snapshotSug.forEach(d => batch.delete(d.ref));
+
+        batch.delete(doc(db, "users", sid));
+        await batch.commit();
+        playTrashSfx();
+        alert("Conta excluída com sucesso.");
+        handleLogout();
+    } catch {
+        alert("Erro ao excluir conta.");
+    } finally {
+        setLoading(false);
+    }
+};
+
+// --- NAVIGATE MONTH ---
+const changeMonth = (offset) => {
+    const [year, month] = filterMonth.split('-').map(Number);
+    const date = new Date(year, month - 1 + offset, 1);
+    setFilterMonth(date.toISOString().substring(0, 7));
+    if (!accumStart || !accumEnd) setBalanceMode('MONTHLY');
+};
+
+// --- MODALS ---
+const openEdit = (tx) => {
+    setEditingId(tx.id);
+    setNewTx({ 
+        ...tx, 
+        amount: (tx.amount || 0).toString().replace('.', ','),
+        date: tx.date ? tx.date.split('T')[0] : new Date().toISOString().split('T')[0]
+    });
+    setShowModal(true);
+};
+
+const openAddTransaction = (secondary = false) => {
+    setEditingId(null);
+    setNewTx({ 
+        description: '', amount: '', type: 'EXPENSE', 
+        date: new Date().toISOString().split('T')[0], 
+        method: 'PIX', isPaid: true, installments: 1,
+        isSecondary: secondary
+    });
+    setShowModal(true);
+};
+
+// --- SAVE TRANSACTION ---
+const saveTransaction = async (e) => {
+    e.preventDefault();
+    const totalAmountInput = parseFloat(newTx.amount.toString().replace(',', '.')) || 0;
+    const instCount = parseInt(newTx.installments) || 1;
+
+    try {
+        if (editingId) {
+            await updateDoc(doc(db, "transactions", editingId), { 
+                ...newTx, amount: totalAmountInput, 
+                date: new Date(newTx.date + "T12:00:00").toISOString() 
+            });
+        } else if (instCount > 1 && newTx.method === 'CREDITO' && newTx.type === 'EXPENSE') {
+            const batch = writeBatch(db);
+            const baseDate = new Date(newTx.date + "T12:00:00");
+            const installmentValue = totalAmountInput / instCount;
+
+            for (let i = 0; i < instCount; i++) {
+                const pDate = new Date(baseDate);
+                pDate.setMonth(baseDate.getMonth() + i);
+                const newDocRef = doc(collection(db, "transactions"));
+                batch.set(newDocRef, {
+                    ...newTx,
+                    amount: installmentValue,
+                    totalValue: totalAmountInput,
+                    currentInstallment: i + 1,
+                    totalInstallments: instCount,
+                    date: pDate.toISOString(),
+                    userId: user.id,
+                    installments: 1,
+                    createdAt: serverTimestamp()
                 });
-                setShowModal(true);
-            };
+            }
+            await batch.commit();
+            playMoneySfx();
+        } else {
+            await addDoc(collection(db, "transactions"), { 
+                ...newTx, amount: totalAmountInput, 
+                date: new Date(newTx.date + "T12:00:00").toISOString(), 
+                userId: user.id,
+                createdAt: serverTimestamp()
+            });
+            playMoneySfx();
+        }
+        setShowModal(false);
+    } catch {
+        alert("Erro ao salvar a transação.");
+    }
+};
 
-            const openAddTransaction = (secondary = false) => {
-                setEditingId(null);
-                setNewTx({ 
-                    description: '', amount: '', type: 'EXPENSE', 
-                    date: new Date().toISOString().split('T')[0], 
-                    method: 'PIX', isPaid: true, installments: 1,
-                    isSecondary: secondary
-                });
-                setShowModal(true);
-            };
-
-            /**
-             * Salva ou atualiza transação (suporta parcelamento automático no crédito)
-             */
-            const saveTransaction = async (e) => {
-                e.preventDefault();
-                const totalAmountInput = parseFloat(newTx.amount.toString().replace(',', '.')) || 0;
-                const instCount = parseInt(newTx.installments) || 1;
-                try {
-                    if (editingId) {
-                        // Edição simples
-                        await updateDoc(doc(db, "transactions", editingId), { 
-                            ...newTx, amount: totalAmountInput, 
-                            date: new Date(newTx.date + "T12:00:00").toISOString() 
-                        });
-                    } else if (instCount > 1 && newTx.method === 'CREDITO' && newTx.type === 'EXPENSE') {
-                        // Lógica de Parcelamento (Cria múltiplos registros em batch)
-                        const batch = writeBatch(db);
-                        const baseDate = new Date(newTx.date + "T12:00:00");
-                        const installmentValue = totalAmountInput / instCount;
-                        
-                        for (let i = 0; i < instCount; i++) {
-                            const pDate = new Date(baseDate);
-                            pDate.setMonth(baseDate.getMonth() + i);
-                            const newDocRef = doc(collection(db, "transactions"));
-                            batch.set(newDocRef, {
-                                ...newTx,
-                                amount: installmentValue,
-                                totalValue: totalAmountInput,
-                                currentInstallment: i + 1,
-                                totalInstallments: instCount,
-                                date: pDate.toISOString(),
-                                userId: user.id,
-                                installments: 1,
-                                createdAt: serverTimestamp()
-                            });
-                        }
-                        await batch.commit();
-                        playMoneySfx();
-                    } else {
-                        // Cadastro simples de transação
-                        await addDoc(collection(db, "transactions"), { 
-                            ...newTx, amount: totalAmountInput, 
-                            date: new Date(newTx.date + "T12:00:00").toISOString(), 
-                            userId: user.id,
-                            createdAt: serverTimestamp()
-                        });
-                        playMoneySfx();
-                    }
-                    setShowModal(false);
-                } catch (e) { alert("Erro ao salvar"); }
-            };
 
             /**
              * Lógica de consulta à IA (Gemini)

@@ -419,7 +419,7 @@ unsubSugg = onSnapshot(qsUser, (snap) => {
     ).length;
     setUnreadCount(unread);
 });
-    }
+   }
   // 🔹 Listener das TRANSAÇÕES
   const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
   const unsubTx = onSnapshot(qTx, (s) => {
@@ -438,8 +438,6 @@ unsubSugg = onSnapshot(qsUser, (snap) => {
     unsubUsersList();
   };
 };
-
-
 
             // Efeito para checar persistência de login ao carregar
             useEffect(() => {

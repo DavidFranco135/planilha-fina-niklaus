@@ -1,161 +1,258 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Finanças</title>
-
-<!-- Configurações para Web App (PWA) e Favicons -->
-<meta name="mobile-web-app-capable" content="yes">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finanças</title>
+    
+    <!-- Configurações para Web App (PWA) e Favicons -->
+    <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-touch-fullscreen" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
-<link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
-<link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png">
-
-<!-- Importação de bibliotecas externas -->
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-
-<!-- Chart.js GLOBAL (sem ESM, sem conflito) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-:root {
-  --primary: #8b5cf6;
-  --bg-dark: #0f172a;
-}
-
-/* Estilização Geral do Body */
-body { 
-  font-family: 'Plus Jakarta Sans', sans-serif; 
-  background-color: var(--bg-dark); 
-  color: #f1f5f9;
-  margin: 0;
-  overflow-x: hidden;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* (resto do seu CSS permanece igual) */
-</style>
-
-<!-- Mapeamento de Módulos (ESM) -->
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "firebase/app": "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js",
-    "htm": "https://esm.sh/htm@3.1.1",
-    "@google/genai": "https://esm.sh/@google/genai"
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png">
+    
+    <!-- Importação de bibliotecas externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    // Sua configuração aqui (colors, theme, etc)
+    theme: {
+      extend: {
+        colors: {
+          violet: { 600: '#7c3aed' }
+        }
+      }
+    }
   }
-}
 </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        :root {
+            --primary: #8b5cf6;
+            --bg-dark: #0f172a;
+        }
+
+        /* Estilização Geral do Body */
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-dark); 
+            color: #f1f5f9;
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Efeito de Vidro Fosco (Glassmorphism) */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Animação de Loading */
+        .loader { 
+            border-top-color: var(--primary); 
+            animation: spinner 0.8s ease-in-out infinite; 
+        }
+        @keyframes spinner { to { transform: rotate(360deg); } }
+
+        /* Animações de Entrada de Elementos */
+        .animate-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Destaque para item ativo na Sidebar */
+        .sidebar-item-active {
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0) 100%);
+            color: var(--primary);
+            border-right: 3px solid var(--primary);
+            text-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+        }
+
+        /* Customização de Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        /* Ajuste de inputs para dispositivos móveis */
+        input, select, textarea { font-size: 16px !important; color: white !important; }
+        
+        @media (max-width: 640px) {
+            .text-3xl { font-size: 1.5rem !important; }
+            .p-8 { padding: 1.25rem !important; }
+            .p-10 { padding: 1.5rem !important; }
+            .rounded-[2.5rem] { border-radius: 1.5rem !important; }
+            .rounded-[3rem] { border-radius: 2rem !important; }
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .notification-layer {
+            z-index: 9999 !important;
+        }
+
+        /* Efeito de desfoque para ocultar valores */
+        .blur-value {
+            filter: blur(8px);
+            opacity: 0.6;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .transition-value {
+            transition: filter 0.3s ease, opacity 0.3s ease;
+        }
+
+        /* Estilização do Toggle Switch (Configurações) */
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 44px;
+          height: 24px;
+        }
+
+        .switch input { 
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #334155;
+          transition: .4s;
+          border-radius: 34px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+        }
+
+        input:checked + .slider {
+          background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(20px);
+        }
+    </style>
+
+    <!-- Mapeamento de Módulos (ESM) -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom": "https://esm.sh/react-dom@18.2.0",
+        "firebase/app": "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js",
+        "htm": "https://esm.sh/htm@3.1.1",
+        "@google/genai": "https://esm.sh/@google/genai"
+      }
+    }
+    </script>
 </head>
-
 <body>
-<div id="root"></div>
+    <div id="root"></div>
 
-<script type="module">
-/* =========================
-   IMPORTS NO TOPO
-========================= */
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import ReactDOM from 'react-dom';
-import htm from 'htm';
+   <script type="module">
+    // 1. IMPORTS NO TOPO
+    import { initializeApp } from "firebase/app";
+    import { 
+        getAuth, 
+        createUserWithEmailAndPassword, 
+        sendPasswordResetEmail,
+        signInWithEmailAndPassword 
+    } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
+    
+    import { 
+        getFirestore, doc, setDoc, getDoc, collection, 
+        addDoc, query, where, onSnapshot, deleteDoc, updateDoc, 
+        writeBatch, serverTimestamp, orderBy, getDocs 
+    } from "firebase/firestore";
 
-import { initializeApp } from "firebase/app";
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword 
-} from "firebase/auth";
+    import React, { useState, useEffect, useMemo, useRef } from 'react';
+    import ReactDOM from 'react-dom';
+    import htm from 'htm';
+    import { GoogleGenAI } from "@google/genai";
 
-import { 
-  getFirestore, doc, setDoc, getDoc, collection, 
-  addDoc, query, where, onSnapshot, deleteDoc, updateDoc, 
-  writeBatch, serverTimestamp, orderBy, getDocs 
-} from "firebase/firestore";
+    const html = htm.bind(React.createElement);
+    
+    // 2. CONFIGURAÇÃO E INICIALIZAÇÃO
+    const firebaseConfig = {
+        apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
+        authDomain: "planilha-fina.firebaseapp.com",
+        projectId: "planilha-fina",
+        storageBucket: "planilha-fina.firebasestorage.app",
+        messagingSenderId: "288466007894",
+        appId: "1:288466007894:web:e917cc6eeac421671188f7"
+    };
 
-import { GoogleGenAI } from "@google/genai";
+    // Inicialização correta
+    const fbApp = initializeApp(firebaseConfig);
+    const auth = getAuth(fbApp);
+    const db = getFirestore(fbApp);
 
-/* =========================
-   HTM
-========================= */
-const html = htm.bind(React.createElement);
+        // ... Resto dos sons e componentes (Avatar, etc) ...
 
-/* =========================
-   FIREBASE
-========================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
-  authDomain: "planilha-fina.firebaseapp.com",
-  projectId: "planilha-fina",
-  storageBucket: "planilha-fina.firebasestorage.app",
-  messagingSenderId: "288466007894",
-  appId: "1:288466007894:web:e917cc6eeac421671188f7"
-};
+        // Carregamento prévio de efeitos sonoros
+        const bellSound = new Audio('https://assets.mixkit.co/active_storage/sfx/3005/3005-preview.mp3');
+        const trashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1474/1474-preview.mp3');
+        trashSound.volume = 0.3; // Volume reduzido para o som de exclusão
 
-const fbApp = initializeApp(firebaseConfig);
-const auth = getAuth(fbApp);
-const db = getFirestore(fbApp);
-
-/* =========================
-   SONS
-========================= */
-const bellSound = new Audio('https://assets.mixkit.co/active_storage/sfx/3005/3005-preview.mp3');
-const trashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1474/1474-preview.mp3');
-trashSound.volume = 0.3;
-
-/* =========================
-   COMPONENTE AVATAR
-========================= */
-const Avatar = ({ src, size = 'md' }) => {
-  const classes = { 
-    sm: 'w-8 h-8 rounded-lg', 
-    md: 'w-10 h-10 rounded-xl', 
-    lg: 'w-16 h-16 rounded-2xl' 
-  };
-
-  return html`
-    <div className="${classes[size]} bg-slate-700 flex items-center justify-center overflow-hidden border-2 border-slate-600">
-      ${src 
-        ? html`<img src="${src}" className="w-full h-full object-cover" />`
-        : html`<i className="fas fa-user text-slate-500"></i>`}
-    </div>
-  `;
-};
-
-/* ===== DAQUI PRA BAIXO
-   SEU CÓDIGO CONTINUA NORMAL
-========================= */
-</script>
-</body>
-</html>
+        /**
+         * Componente de Avatar reutilizável
+         */
+        const Avatar = ({ src, size = 'md' }) => {
+            const classes = { sm: 'w-8 h-8 rounded-lg', md: 'w-10 h-10 rounded-xl', lg: 'w-16 h-16 rounded-2xl' };
+            return html`
+                <div className="${classes[size]} bg-slate-700 flex items-center justify-center overflow-hidden border-2 border-slate-600">
+                    ${src ? html`<img src="${src}" className="w-full h-full object-cover" />` : html`<i className="fas fa-user text-slate-500"></i>`}
+                </div>
+            `;
+        };
 
         /**
          * Componente Principal da Aplicação
          */
-       // Componente Principal da Aplicação
-const App = () => {
-    // Estados Principais
+        const App = () => {
+    // Estados Principais de Usuário e UI
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('dashboard');
     const [transactions, setTransactions] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
-
-    // Estados Admin
+    
+    // Estados do Painel Admin (ADICIONADOS PARA CORREÇÃO)
     const [adminTab, setAdminTab] = useState('inbox'); 
     const [allUsers, setAllUsers] = useState([]); 
     const [allMessagesHistory, setAllMessagesHistory] = useState([]);
@@ -166,35 +263,33 @@ const App = () => {
     const [methodFilter, setMethodFilter] = useState('ALL');
     const [showValues, setShowValues] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
-
+    
     // Modos de Balanço
     const [balanceMode, setBalanceMode] = useState('MONTHLY');
     const [accumStart, setAccumStart] = useState('');
     const [accumEnd, setAccumEnd] = useState('');
     const [showCustomPeriod, setShowCustomPeriod] = useState(false);
 
-    // IA
+    // Estados da IA
     const [aiAdvice, setAiAdvice] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
     const [showAiModal, setShowAiModal] = useState(false);
 
-    // Refs
+    // Referências de UI
     const fileInputPrincipalRef = useRef(null);
     const fileInputSecondaryRef = useRef(null);
     const notificationDropdownRef = useRef(null);
     const doughnutChartRef = useRef(null);
     const barChartRef = useRef(null);
-    const comparisonChartRef = useRef(null);
-    const channelChartRef = useRef(null);
 
-    // Nova transação
+    // Estado para nova transação
     const [newTx, setNewTx] = useState({ 
         description: '', amount: '', type: 'INCOME', 
         date: new Date().toISOString().split('T')[0],
         method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
     });
 
-    // Autenticação
+    // Estados de Autenticação
     const [email, setEmail] = useState('');
     const [pass, setPass] = useState('');
     const [showPass, setShowPass] = useState(false);
@@ -203,14 +298,16 @@ const App = () => {
     const [authLoading, setAuthLoading] = useState(false);
     const [keepConnected, setKeepConnected] = useState(true);
 
-    // Perfil
+    // Perfil das Contas
     const [profileName, setProfileName] = useState('');
     const [secondaryName, setSecondaryName] = useState('');
     const [profilePhoto, setProfilePhoto] = useState('');
     const [secondaryPhoto, setSecondaryPhoto] = useState('');
+
+    // Controle de visualização de conta secundária no extrato
     const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
 
-    // Sugestões e notificações
+    // Sugestões e Notificações
     const [suggestionText, setSuggestionText] = useState('');
     const [sendingSuggestion, setSendingSuggestion] = useState(false);
     const [userSuggestions, setUserSuggestions] = useState([]);
@@ -220,25 +317,22 @@ const App = () => {
 
     const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'davidbhmg147@gmail.com', [user]);
 
-    // Sons
-    const bellSound = new Audio('https://assets.mixkit.co/active_storage/sfx/3005/3005-preview.mp3');
-    const trashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1474/1474-preview.mp3');
-    trashSound.volume = 0.3;
-
+    // Funções de feedback sonoro
     const playMoneySfx = () => {
         if (soundEnabled) {
             bellSound.currentTime = 0;
-            bellSound.play().catch(() => {});
-        }
-    };
-    const playTrashSfx = () => {
-        if (soundEnabled) {
-            trashSound.currentTime = 0;
-            trashSound.play().catch(() => {});
+            bellSound.play().catch(e => console.log('Audio play blocked'));
         }
     };
 
-    // Função enviar mensagem direta (Admin)
+    const playTrashSfx = () => {
+        if (soundEnabled) {
+            trashSound.currentTime = 0;
+            trashSound.play().catch(e => console.log('Audio play blocked'));
+        }
+    };
+
+    // FUNÇÃO PARA ENVIAR MENSAGEM DIRETA (ADMIN)
     const sendDirectMessage = async (userId, msg) => {
         try {
             const response = await fetch('https://SUA-URL-DO-BACKEND.com/enviar-mensagem', {
@@ -246,136 +340,170 @@ const App = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, mensagem: msg })
             });
-            if (response.ok) alert("Mensagem enviada com sucesso!");
+            if (response.ok) {
+                alert("Mensagem enviada com sucesso!");
+            }
         } catch (err) {
             alert("Erro ao conectar com o servidor.");
         }
     };
 
-    // Sync Firestore
+    /**
+     * Inicia a sincronização de dados em tempo real com o Firestore
+     */
     const startDataSync = (sid) => {
-        setLoading(true);
-        let unsubSugg = () => {};
-        let unsubUsersList = () => {};
+  setLoading(true);
 
-        const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-            if (!s.exists()) { handleLogout(); return; }
+  let unsubSugg = () => {};
+  let unsubUsersList = () => {};
 
-            const userData = { id: s.id, ...s.data() };
-            const isUserAdmin = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com';
+  // 🔹 Listener do USUÁRIO
+  const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+    if (!s.exists()) {
+      handleLogout();
+      return;
+    }
 
-            if (!isUserAdmin && userData.status !== 'paid') {
-                alert("Acesso bloqueado. Efetue o pagamento.");
-                handleLogout();
-                return;
-            }
+    const userData = { id: s.id, ...s.data() };
+    const adminEmail = "davidbhmg147@gmail.com";
+    const isUserAdmin = userData.email?.toLowerCase() === adminEmail;
 
-            setUser(userData);
-            setProfileName(userData.appName || "");
-            setSecondaryName(userData.secondaryName || "");
-            setProfilePhoto(userData.photoURL || "");
-            setSecondaryPhoto(userData.secondaryPhotoURL || "");
-            setSoundEnabled(userData.soundEnabled ?? true);
+    // 🔐 Bloqueio de acesso se não estiver pago (exceto admin)
+    if (!isUserAdmin && userData.status !== 'paid') {
+      alert("Acesso bloqueado. Efetue o pagamento.");
+      handleLogout();
+      return;
+    }
 
-            unsubSugg();
+    // 🔥 SETA O USUÁRIO
+    setUser(userData);
 
-            if (isUserAdmin) {
-                const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-                unsubSugg = onSnapshot(qs, (snap) => {
-                    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setAdminSuggestions(docs);
-                    setAllMessagesHistory(docs);
-                });
+    // 🔥 SETA OS DADOS DE PERFIL (ERA ISSO QUE FALTAVA)
+    setProfileName(userData.appName || "");
+    setSecondaryName(userData.secondaryName || "");
+    setProfilePhoto(userData.photoURL || "");
+    setSecondaryPhoto(userData.secondaryPhotoURL || "");
+    setSoundEnabled(userData.soundEnabled ?? true);
 
-                const qu = query(collection(db, "users"));
-                unsubUsersList = onSnapshot(qu, (snap) => {
-                    setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                });
-            } else {
-                const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-                unsubSugg = onSnapshot(qsUser, (snap) => {
-                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setUserSuggestions(list);
-                    const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
-                    setUnreadCount(unread);
-                });
-            }
-        });
+    // Limpa listener anterior
+    unsubSugg();
 
-        const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
-        const unsubTx = onSnapshot(qTx, (s) => {
-            const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-            setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-            setLoading(false);
-        });
+    if (isUserAdmin) {
+      // 📥 Admin vê TODAS as sugestões
+      const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+      unsubSugg = onSnapshot(qs, (snap) => {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setAdminSuggestions(docs);
+        setAllMessagesHistory(docs);
+      });
 
-        return () => { unsubUser(); unsubTx(); unsubSugg(); unsubUsersList(); };
-    };
+      // 👥 Admin vê TODOS os usuários
+      const qu = query(collection(db, "users"));
+      unsubUsersList = onSnapshot(qu, (snap) => {
+        setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
 
-    // Checar persistência de login
-    useEffect(() => {
-        const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
-        if (sid) return startDataSync(sid);
-        setLoading(false);
-    }, []);
+    } else {
+      // 📩 Usuário vê só as próprias sugestões
+      const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+      unsubSugg = onSnapshot(qsUser, (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setUserSuggestions(list);
 
-    // Fechar dropdown ao clicar fora
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
-                setShowNotificationList(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
+        setUnreadCount(unread);
+      });
+    }
+  });
 
-    // Notificações ordenadas
-    const notifications = useMemo(() => {
-        return [...userSuggestions]
-            .filter(sug => sug.reply)
-            .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
-    }, [userSuggestions]);
-;
+  // 🔹 Listener das TRANSAÇÕES
+  const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
+  const unsubTx = onSnapshot(qTx, (s) => {
+    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    setTransactions(
+      docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    );
+    setLoading(false);
+  });
+
+  // 🔹 Cleanup
+  return () => {
+    unsubUser();
+    unsubTx();
+    unsubSugg();
+    unsubUsersList();
+  };
+};
+
+
+
+            // Efeito para checar persistência de login ao carregar
+            useEffect(() => {
+                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+                if (sid) return startDataSync(sid);
+                setLoading(false);
+            }, []);
+
+            // Efeito para fechar dropdown de notificações ao clicar fora
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
+                        setShowNotificationList(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => document.removeEventListener('mousedown', handleClickOutside);
+            }, []);
+
+            // Notificações formatadas (respostas do admin)
+            const notifications = useMemo(() => {
+                return [...userSuggestions]
+                    .filter(sug => sug.reply)
+                    .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
+            }, [userSuggestions]);
 
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
              */
            
 
-// --- AUTENTICAÇÃO ---
 const handleAuth = async (e) => {
     if (e) e.preventDefault();
     
+    // Validação inicial
     if (!email || (!isRecovering && !pass)) {
         alert("Preencha os campos corretamente.");
         return;
     }
 
     setAuthLoading(true);
-
+    
     try {
+        // 'auth' e 'db' já foram inicializados no topo do script
         const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
         const userRef = doc(db, "users", safeId);
         const userSnap = await getDoc(userRef);
 
-        // Recuperação de senha
+        // --- MODO: RECUPERAÇÃO DE SENHA ---
         if (isRecovering) {
             auth.languageCode = 'pt';
             await sendPasswordResetEmail(auth, email.trim());
             alert("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
             setIsRecovering(false);
         } 
-        // Cadastro
+        
+        // --- MODO: CADASTRO ---
         else if (isRegistering) {
             if (userSnap.exists()) {
                 alert("Este e-mail já está cadastrado.");
             } else {
+                // Cria no Authentication
                 const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+                // Salva no Firestore
                 await setDoc(userRef, {
                     uid: cred.user.uid,
                     email: email.trim(),
-                    password: pass,
+                    password: pass, // Senha em texto para o seu sistema de login legado
                     status: 'pending',
                     paid: false,
                     createdAt: serverTimestamp()
@@ -384,25 +512,33 @@ const handleAuth = async (e) => {
                 setIsRegistering(false);
             }
         } 
-        // Login
+        
+        // --- MODO: LOGIN COM SINCRONIZAÇÃO DE SENHA ---
         else {
             try {
+                // 1. Tenta logar no Firebase Auth (valida a senha nova se tiver sido resetada)
                 await signInWithEmailAndPassword(auth, email.trim(), pass);
-
+                
                 if (userSnap.exists()) {
                     const userData = userSnap.data();
 
+                    // 2. SINCRONIZAÇÃO: Se a senha digitada for diferente da que está no Firestore, atualiza o Firestore
                     if (userData.password !== pass) {
                         await updateDoc(userRef, { password: pass });
-                        console.log("Senha sincronizada no Firestore.");
+                        console.log("Senha sincronizada no banco de dados.");
                     }
 
+                    // 3. Verificação de Acesso (Pagamento ou Admin)
                     if (userData.paid || userData.status === 'paid' || email.toLowerCase() === 'niklaus') {
                         const storage = keepConnected ? localStorage : sessionStorage;
                         storage.setItem('belaju_sid', safeId);
-
-                        if (typeof startDataSync === 'function') startDataSync(safeId);
-                        else window.location.reload();
+                        
+                        // Inicia sincronização de dados do app
+                        if (typeof startDataSync === 'function') {
+                            startDataSync(safeId);
+                        } else {
+                            window.location.reload();
+                        }
                     } else {
                         alert("Acesso restrito. Efetue o pagamento para liberar.");
                     }
@@ -415,166 +551,181 @@ const handleAuth = async (e) => {
             }
         }
     } catch (err) {
-        console.error("Erro geral:", err);
+        console.error("Erro Geral:", err);
         alert("Ocorreu um erro: " + err.message);
     } finally {
         setAuthLoading(false);
     }
 };
+            /**
+             * Limpa dados de sessão ao sair
+             */
+            const handleLogout = () => {
+                localStorage.removeItem('belaju_sid');
+                sessionStorage.removeItem('belaju_sid');
+                setUser(null);
+                setTransactions([]);
+                setLoading(false);
+            };
 
-// --- LOGOUT ---
-const handleLogout = () => {
-    localStorage.removeItem('belaju_sid');
-    sessionStorage.removeItem('belaju_sid');
-    setUser(null);
-    setTransactions([]);
-    setLoading(false);
-};
+            /**
+             * Exclusão de uma transação individual
+             */
+            const handleDeleteTransaction = async (e, id) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (confirm("Deseja realmente excluir este registro?")) {
+                    try {
+                        await deleteDoc(doc(db, "transactions", id));
+                        playTrashSfx();
+                    } catch (err) {
+                        alert("Erro ao excluir registro.");
+                    }
+                }
+            };
 
-// --- DELETE TRANSACTION ---
-const handleDeleteTransaction = async (e, id) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!confirm("Deseja realmente excluir este registro?")) return;
+            /**
+             * Limpa todos os dados financeiros do usuário
+             */
+            const handleClearFinancialData = async () => {
+                if (confirm("ATENÇÃO: Deseja realmente excluir TODOS os dados financeiros e transações? Esta ação é irreversível.")) {
+                    if (confirm("Confirmação Final: Apagar todo o seu histórico financeiro?")) {
+                        setLoading(true);
+                        try {
+                            const batch = writeBatch(db);
+                            const q = query(collection(db, "transactions"), where("userId", "==", user.id));
+                            const snapshot = await getDocs(q);
+                            snapshot.forEach((d) => batch.delete(d.ref));
+                            await batch.commit();
+                            playTrashSfx();
+                            alert("Todos os dados financeiros foram removidos.");
+                        } catch (e) {
+                            alert("Erro ao limpar dados financeiros.");
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            };
 
-    try {
-        await deleteDoc(doc(db, "transactions", id));
-        playTrashSfx();
-    } catch {
-        alert("Erro ao excluir registro.");
-    }
-};
+            /**
+             * Exclusão total da conta e dados vinculados
+             */
+            const handleDeleteAccount = async () => {
+                if (confirm("ATENÇÃO: Isso excluirá permanentemente sua conta e todos os seus dados. Deseja continuar?")) {
+                    const sid = user.id;
+                    setLoading(true);
+                    try {
+                        const batch = writeBatch(db);
+                        // Apaga transações
+                        const q = query(collection(db, "transactions"), where("userId", "==", sid));
+                        const snapshot = await getDocs(q);
+                        snapshot.forEach((d) => batch.delete(d.ref));
+                        
+                        // Apaga sugestões
+                        const sugQ = query(collection(db, "suggestions"), where("userId", "==", sid));
+                        const sugSnapshot = await getDocs(sugQ);
+                        sugSnapshot.forEach((d) => batch.delete(d.ref));
 
-// --- CLEAR ALL FINANCIAL DATA ---
-const handleClearFinancialData = async () => {
-    if (!confirm("Deseja realmente excluir TODOS os dados financeiros?")) return;
-    if (!confirm("Confirmação final: apagar histórico financeiro?")) return;
+                        // Apaga documento do usuário
+                        batch.delete(doc(db, "users", sid));
+                        await batch.commit();
+                        playTrashSfx();
+                        alert("Conta excluída com sucesso.");
+                        handleLogout();
+                    } catch (e) {
+                        alert("Erro ao excluir conta.");
+                    } finally {
+                        setLoading(false);
+                    }
+                }
+            };
 
-    setLoading(true);
-    try {
-        const batch = writeBatch(db);
-        const q = query(collection(db, "transactions"), where("userId", "==", user.id));
-        const snapshot = await getDocs(q);
-        snapshot.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-        playTrashSfx();
-        alert("Todos os dados financeiros foram removidos.");
-    } catch {
-        alert("Erro ao limpar dados financeiros.");
-    } finally {
-        setLoading(false);
-    }
-};
+            /**
+             * Navegação entre meses no filtro
+             */
+            const changeMonth = (offset) => {
+                const [year, month] = filterMonth.split('-').map(Number);
+                const date = new Date(year, month - 1 + offset, 1);
+                setFilterMonth(date.toISOString().substring(0, 7));
+                if (!accumStart || !accumEnd) {
+                    setBalanceMode('MONTHLY');
+                }
+            };
 
-// --- DELETE ACCOUNT ---
-const handleDeleteAccount = async () => {
-    if (!confirm("Excluir permanentemente a conta?")) return;
-
-    const sid = user.id;
-    setLoading(true);
-    try {
-        const batch = writeBatch(db);
-
-        const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
-        const snapshotTx = await getDocs(qTx);
-        snapshotTx.forEach(d => batch.delete(d.ref));
-
-        const qSug = query(collection(db, "suggestions"), where("userId", "==", sid));
-        const snapshotSug = await getDocs(qSug);
-        snapshotSug.forEach(d => batch.delete(d.ref));
-
-        batch.delete(doc(db, "users", sid));
-        await batch.commit();
-        playTrashSfx();
-        alert("Conta excluída com sucesso.");
-        handleLogout();
-    } catch {
-        alert("Erro ao excluir conta.");
-    } finally {
-        setLoading(false);
-    }
-};
-
-// --- NAVIGATE MONTH ---
-const changeMonth = (offset) => {
-    const [year, month] = filterMonth.split('-').map(Number);
-    const date = new Date(year, month - 1 + offset, 1);
-    setFilterMonth(date.toISOString().substring(0, 7));
-    if (!accumStart || !accumEnd) setBalanceMode('MONTHLY');
-};
-
-// --- MODALS ---
-const openEdit = (tx) => {
-    setEditingId(tx.id);
-    setNewTx({ 
-        ...tx, 
-        amount: (tx.amount || 0).toString().replace('.', ','),
-        date: tx.date ? tx.date.split('T')[0] : new Date().toISOString().split('T')[0]
-    });
-    setShowModal(true);
-};
-
-const openAddTransaction = (secondary = false) => {
-    setEditingId(null);
-    setNewTx({ 
-        description: '', amount: '', type: 'EXPENSE', 
-        date: new Date().toISOString().split('T')[0], 
-        method: 'PIX', isPaid: true, installments: 1,
-        isSecondary: secondary
-    });
-    setShowModal(true);
-};
-
-// --- SAVE TRANSACTION ---
-const saveTransaction = async (e) => {
-    e.preventDefault();
-    const totalAmountInput = parseFloat(newTx.amount.toString().replace(',', '.')) || 0;
-    const instCount = parseInt(newTx.installments) || 1;
-
-    try {
-        if (editingId) {
-            await updateDoc(doc(db, "transactions", editingId), { 
-                ...newTx, amount: totalAmountInput, 
-                date: new Date(newTx.date + "T12:00:00").toISOString() 
-            });
-        } else if (instCount > 1 && newTx.method === 'CREDITO' && newTx.type === 'EXPENSE') {
-            const batch = writeBatch(db);
-            const baseDate = new Date(newTx.date + "T12:00:00");
-            const installmentValue = totalAmountInput / instCount;
-
-            for (let i = 0; i < instCount; i++) {
-                const pDate = new Date(baseDate);
-                pDate.setMonth(baseDate.getMonth() + i);
-                const newDocRef = doc(collection(db, "transactions"));
-                batch.set(newDocRef, {
-                    ...newTx,
-                    amount: installmentValue,
-                    totalValue: totalAmountInput,
-                    currentInstallment: i + 1,
-                    totalInstallments: instCount,
-                    date: pDate.toISOString(),
-                    userId: user.id,
-                    installments: 1,
-                    createdAt: serverTimestamp()
+            // Funções de abertura de modais de edição/criação
+            const openEdit = (tx) => {
+                setEditingId(tx.id);
+                setNewTx({ 
+                    ...tx, 
+                    amount: (tx.amount || 0).toString().replace('.', ','),
+                    date: tx.date ? tx.date.split('T')[0] : new Date().toISOString().split('T')[0]
                 });
-            }
-            await batch.commit();
-            playMoneySfx();
-        } else {
-            await addDoc(collection(db, "transactions"), { 
-                ...newTx, amount: totalAmountInput, 
-                date: new Date(newTx.date + "T12:00:00").toISOString(), 
-                userId: user.id,
-                createdAt: serverTimestamp()
-            });
-            playMoneySfx();
-        }
-        setShowModal(false);
-    } catch {
-        alert("Erro ao salvar a transação.");
-    }
-};
+                setShowModal(true);
+            };
 
+            const openAddTransaction = (secondary = false) => {
+                setEditingId(null);
+                setNewTx({ 
+                    description: '', amount: '', type: 'EXPENSE', 
+                    date: new Date().toISOString().split('T')[0], 
+                    method: 'PIX', isPaid: true, installments: 1,
+                    isSecondary: secondary
+                });
+                setShowModal(true);
+            };
+
+            /**
+             * Salva ou atualiza transação (suporta parcelamento automático no crédito)
+             */
+            const saveTransaction = async (e) => {
+                e.preventDefault();
+                const totalAmountInput = parseFloat(newTx.amount.toString().replace(',', '.')) || 0;
+                const instCount = parseInt(newTx.installments) || 1;
+                try {
+                    if (editingId) {
+                        // Edição simples
+                        await updateDoc(doc(db, "transactions", editingId), { 
+                            ...newTx, amount: totalAmountInput, 
+                            date: new Date(newTx.date + "T12:00:00").toISOString() 
+                        });
+                    } else if (instCount > 1 && newTx.method === 'CREDITO' && newTx.type === 'EXPENSE') {
+                        // Lógica de Parcelamento (Cria múltiplos registros em batch)
+                        const batch = writeBatch(db);
+                        const baseDate = new Date(newTx.date + "T12:00:00");
+                        const installmentValue = totalAmountInput / instCount;
+                        
+                        for (let i = 0; i < instCount; i++) {
+                            const pDate = new Date(baseDate);
+                            pDate.setMonth(baseDate.getMonth() + i);
+                            const newDocRef = doc(collection(db, "transactions"));
+                            batch.set(newDocRef, {
+                                ...newTx,
+                                amount: installmentValue,
+                                totalValue: totalAmountInput,
+                                currentInstallment: i + 1,
+                                totalInstallments: instCount,
+                                date: pDate.toISOString(),
+                                userId: user.id,
+                                installments: 1,
+                                createdAt: serverTimestamp()
+                            });
+                        }
+                        await batch.commit();
+                        playMoneySfx();
+                    } else {
+                        // Cadastro simples de transação
+                        await addDoc(collection(db, "transactions"), { 
+                            ...newTx, amount: totalAmountInput, 
+                            date: new Date(newTx.date + "T12:00:00").toISOString(), 
+                            userId: user.id,
+                            createdAt: serverTimestamp()
+                        });
+                        playMoneySfx();
+                    }
+                    setShowModal(false);
+                } catch (e) { alert("Erro ao salvar"); }
+            };
 
             /**
              * Lógica de consulta à IA (Gemini)
@@ -588,32 +739,20 @@ const generateAIAdvice = async () => {
     // Limpa qualquer intervalo de digitação anterior se existir
     if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
 
-    // Mostra modal e inicializa animações
     setAiLoading(true);
     setShowAiModal(true);
     setIsTyping(true);
-
+    
     // Frase de espera amigável enquanto o servidor acorda
     setAiAdvice('Niklaus está consultando os gráficos e preparando uma piada... 📈');
 
-    // 🚨 ALERTA RÁPIDO DE GASTOS > 70%
-    const totalExpenses = currentTransactions
-        .filter(t => t.type === 'EXPENSE')
-        .reduce((a, b) => a + b.amount, 0);
-
-    if (totalExpenses > totals.inc * 0.7) {
-        // Exibe alerta rápido dentro do modal
-        setAiAdvice(prev => prev + "\n\n⚠️ Cuidado! Você está gastando mais de 70% da sua receita.");
-    }
-
     try {
-        // Resumo financeiro para a IA
         const summary = `
-Resumo Financeiro de ${profileName || 'Usuário'}:
-Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
-Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
-Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}
-Últimas Transações: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
+            Resumo Financeiro de ${profileName || 'Usuário'}:
+            Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
+            Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
+            Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}
+            Últimas Transações: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
         `;
 
         const res = await fetch("https://controlefinanceiro-naip.onrender.com/gemini", {
@@ -631,7 +770,7 @@ Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}
         const textoCompleto = data.resposta || "Não consegui analisar agora, tente novamente.";
 
         // EFEITO MÁQUINA DE ESCREVER
-        setAiAdvice(""); // Limpa a frase de espera (mantendo só o alerta se necessário)
+        setAiAdvice(""); // Limpa a frase de espera
         let i = 0;
         typingIntervalRef.current = setInterval(() => {
             setAiAdvice((prev) => prev + textoCompleto.charAt(i));
@@ -650,7 +789,6 @@ Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}
         setAiLoading(false);
     }
 };
-
 
 
             /**
@@ -863,9 +1001,6 @@ const handleAppShare = async () => {
                 if (activeTab === 'analytics') {
                     const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
                     const ctxBar = document.getElementById('analyticsBarChart');
-                    document.getElementById('filterMonth')?.addEventListener('change', updateCharts);
-                    document.getElementById('filterYear')?.addEventListener('change', updateCharts);
-
                     
                     if (ctxDoughnut) {
                         if (doughnutChartRef.current) doughnutChartRef.current.destroy();
@@ -1028,19 +1163,6 @@ const handleAppShare = async () => {
 
             const currentActiveName = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? secondaryName : profileName;
             const currentActivePhoto = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? secondaryPhoto : profilePhoto;
-            function updateCharts() {
-    const month = +document.getElementById('filterMonth').value;
-    const year = +document.getElementById('filterYear').value;
-
-    const filtered = currentTransactions.filter(t => {
-        const date = new Date(t.date);
-        return (!month || date.getMonth() + 1 === month) && (!year || date.getFullYear() === year);
-    });
-
-    renderCharts(filtered);
-}
-
-
 
             return html`
                 <div className="min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
@@ -1402,106 +1524,61 @@ const handleAppShare = async () => {
                             </div>
                         ` : ''}
 
-                       ${activeTab === 'analytics' ? html`
-<div className="space-y-8 animate-in">
-
-    {/* Cabeçalho */}
-    <div className="flex justify-between items-center">
-        <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
-
-        {/* Filtro mês/ano */}
-        <div className="flex gap-2">
-            <select id="filterMonth" className="bg-slate-800 text-white p-2 rounded-xl border border-slate-700">
-                <option value="">Mês</option>
-                ${Array.from({length:12}, (_,i) => `<option value="${i+1}">${i+1}</option>`).join('')}
-            </select>
-            <select id="filterYear" className="bg-slate-800 text-white p-2 rounded-xl border border-slate-700">
-                <option value="">Ano</option>
-                ${Array.from({length:5}, (_,i) => {
-                    const year = new Date().getFullYear() - i;
-                    return `<option value="${year}">${year}</option>`;
-                }).join('')}
-            </select>
-        </div>
-    </div>
-
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-        {/* Distribuição de Valores */}
-        <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
-            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">Distribuição de Valores</h4>
-            <div className="relative w-full max-w-[320px] aspect-square">
-                <canvas id="analyticsDoughnutChart"></canvas>
-            </div>
-            <div className="mt-8 grid grid-cols-2 gap-4 w-full">
-                <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
-                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
-                    <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</p>
-                </div>
-                <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
-                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
-                    <p className="text-sm font-black text-violet-400">${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%</p>
-                </div>
-            </div>
-        </div>
-
-        {/* Volume por Canal */}
-        <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
-            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Volume por Canal (Qtd)</h4>
-            <div className="flex-1 flex items-center min-h-[300px]">
-                <canvas id="analyticsBarChart"></canvas>
-            </div>
-            <div className="mt-4 text-[9px] text-slate-500 font-bold uppercase tracking-tighter text-center">
-                Barras superiores indicam entradas, barras tracejadas indicam saídas.
-            </div>
-        </div>
-
-        {/* Comparação com Mês Anterior */}
-        <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
-            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Comparação com Mês Anterior</h4>
-            <div className="flex-1 flex items-center min-h-[300px]">
-                <canvas id="analyticsComparisonChart"></canvas>
-            </div>
-        </div>
-
-        {/* Análise por Canal: Crédito, Débito, Pix, Dinheiro */}
-        <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
-            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Análise por Tipo de Canal</h4>
-            <div className="flex-1 flex items-center min-h-[300px]">
-                <canvas id="analyticsChannelChart"></canvas>
-            </div>
-        </div>
-
-    </div>
-
-    {/* Resumo da Amostragem */}
-    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
-        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="space-y-1">
-                <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
-                <p className="text-xl font-black text-white">${currentTransactions.length}</p>
-            </div>
-            <div className="space-y-1">
-                <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
-                <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'INCOME').length}</p>
-            </div>
-            <div className="space-y-1">
-                <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
-                <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'EXPENSE').length}</p>
-            </div>
-            <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
-                <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
-                <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase">
-                    CONSULTAR DICAS <i className="fas fa-magic text-[10px] text-violet-500"></i>
-                </p>
-            </div>
-        </div>
-    </div>
-
-</div>
-` : ''}
-
+                        ${activeTab === 'analytics' ? html`
+                            <div className="space-y-8 animate-in">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">Distribuição de Valores</h4>
+                                        <div className="relative w-full max-w-[320px] aspect-square">
+                                            <canvas id="analyticsDoughnutChart"></canvas>
+                                        </div>
+                                        <div className="mt-8 grid grid-cols-2 gap-4 w-full">
+                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
+                                                <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</p>
+                                            </div>
+                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
+                                                <p className="text-sm font-black text-violet-400">${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Volume por Canal (Qtd)</h4>
+                                        <div className="flex-1 flex items-center min-h-[300px]">
+                                            <canvas id="analyticsBarChart"></canvas>
+                                        </div>
+                                        <div className="mt-4 text-[9px] text-slate-500 font-bold uppercase tracking-tighter text-center">
+                                            Barras superiores indicam entradas, barras tracejadas indicam saídas.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
+                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.length}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'INCOME').length}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'EXPENSE').length}</p>
+                                        </div>
+                                        <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
+                                            <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
+                                            <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase"> CONSULTAR  DICAS. <i className="fas fa-magic text-[10px] text-violet-500"></i></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
 
    ${activeTab === 'settings' ? html`
     <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">

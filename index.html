@@ -406,16 +406,19 @@
 
     } else {
       // 📩 Usuário vê só as próprias sugestões
-      const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-      unsubSugg = onSnapshot(qsUser, (snap) => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(list);
+      // 📩 Usuário vê só as próprias sugestões
+const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+unsubSugg = onSnapshot(qsUser, (snap) => {
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setUserSuggestions(list);
 
-        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
-        setUnreadCount(unread);
-      });
-    }
-  });
+    // CORRIGIDO: Conta respostas E mensagens diretas não visualizadas
+    const unread = list.filter(sug => 
+        (sug.reply && sug.replyViewed === false) || 
+        (sug.directMessage && sug.replyViewed === false)
+    ).length;
+    setUnreadCount(unread);
+});
 
   // 🔹 Listener das TRANSAÇÕES
   const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
@@ -457,11 +460,12 @@
             }, []);
 
             // Notificações formatadas (respostas do admin)
-            const notifications = useMemo(() => {
-                return [...userSuggestions]
-                    .filter(sug => sug.reply)
-                    .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
-            }, [userSuggestions]);
+            // Notificações formatadas (respostas do admin)
+const notifications = useMemo(() => {
+    return [...userSuggestions]
+        .filter(sug => sug.reply || sug.directMessage) // ADICIONADO: sug.directMessage
+        .sort((a, b) => (b.repliedAt?.seconds || b.createdAt?.seconds || 0) - (a.repliedAt?.seconds || a.createdAt?.seconds || 0));
+}, [userSuggestions]);
 
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
@@ -859,13 +863,12 @@ const sendReply = async (sugId, replyText) => {
 };
 
 const markReplyAsViewed = async (sugId) => {
-  try {
-    await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
-  } catch (e) { 
-    console.error(e); 
-  }
+    try {
+        await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
+    } catch (e) { 
+        console.error(e); 
+    }
 };
-
 /**
  * Compartilhamento do app (Web Share API)
  */
@@ -1586,40 +1589,50 @@ const automaticTips = useMemo(() => {
                                         ` : ''}
                                     </div>
                                     ${showNotificationList ? html`
-                                        <div className="absolute top-14 right-0 w-72 bg-slate-900 border border-slate-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-[99999] overflow-hidden animate-in">
-                                            <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center">
-                                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notificações</h3>
-                                                ${unreadCount > 0 ? html`<span className="text-[8px] font-black bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">${unreadCount} Novas</span>` : ''}
-                                            </div>
-                                            <div className="max-h-80 overflow-y-auto no-scrollbar">
-                                                ${notifications.length === 0 ? html`
-                                                    <div className="p-8 text-center text-[10px] font-bold text-slate-600 uppercase tracking-widest">Nenhuma notificação</div>
-                                                ` : notifications.map(n => html`
-                                                    <div key=${n.id} 
-                                                         onClick=${async () => {
-                                                             if (!n.replyViewed) await markReplyAsViewed(n.id);
-                                                             setActiveTab('settings');
-                                                             setShowNotificationList(false);
-                                                             setTimeout(() => {
-                                                                const element = document.getElementById('sugestoes-section');
-                                                                if (element) element.scrollIntoView({ behavior: 'smooth' });
-                                                             }, 150);
-                                                         }}
-                                                         className=${`p-4 border-b border-slate-800/30 cursor-pointer hover:bg-slate-800/40 transition-colors relative ${!n.replyViewed ? 'bg-violet-500/5' : ''}`}>
-                                                        <div className="flex justify-between items-start mb-1">
-                                                            <span className="text-[8px] font-black text-violet-400 uppercase">Resposta do Adm</span>
-                                                            <span className="text-[7px] font-bold text-slate-500 uppercase">${n.repliedAt ? new Date(n.repliedAt.seconds * 1000).toLocaleDateString() : ''}</span>
-                                                        </div>
-                                                        <p className="text-[10px] text-slate-300 line-clamp-2 italic">"${n.reply}"</p>
-                                                        ${!n.replyViewed ? html`<span className="absolute right-2 bottom-2 w-1.5 h-1.5 bg-rose-500 rounded-full"></span>` : ''}
-                                                    </div>
-                                                `)}
-                                            </div>
-                                            <div className="p-3 bg-slate-800/10 text-center">
-                                                <button onClick=${() => { setActiveTab('settings'); setShowNotificationList(false); }} className="text-[8px] font-black text-slate-500 uppercase hover:text-violet-400 transition-colors tracking-widest">Ver Todas as Sugestões</button>
-                                            </div>
-                                        </div>
-                                    ` : ''}
+    <div className="absolute top-14 right-0 w-72 bg-slate-900 border border-slate-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-[99999] overflow-hidden animate-in">
+        <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notificações</h3>
+            ${unreadCount > 0 ? html`<span className="text-[8px] font-black bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">${unreadCount} Novas</span>` : ''}
+        </div>
+        <div className="max-h-80 overflow-y-auto no-scrollbar">
+            ${notifications.length === 0 ? html`
+                <div className="p-8 text-center text-[10px] font-bold text-slate-600 uppercase tracking-widest">Nenhuma notificação</div>
+            ` : notifications.map(n => html`
+                <div key=${n.id} 
+                     onClick=${async () => {
+                         if (!n.replyViewed) await markReplyAsViewed(n.id);
+                         setActiveTab('settings');
+                         setShowNotificationList(false);
+                         setTimeout(() => {
+                            const element = n.directMessage 
+                                ? document.querySelector('[id*="mensagens-admin"]') 
+                                : document.getElementById('sugestoes-section');
+                            if (element) element.scrollIntoView({ behavior: 'smooth' });
+                         }, 150);
+                     }}
+                     className=${`p-4 border-b border-slate-800/30 cursor-pointer hover:bg-slate-800/40 transition-colors relative ${!n.replyViewed ? 'bg-violet-500/5' : ''}`}>
+                    <div className="flex justify-between items-start mb-1">
+                        <span className="text-[8px] font-black ${n.directMessage ? 'text-emerald-400' : 'text-violet-400'} uppercase">
+                            ${n.directMessage ? 'Mensagem do Admin' : 'Resposta do Adm'}
+                        </span>
+                        <span className="text-[7px] font-bold text-slate-500 uppercase">
+                            ${n.directMessage && n.createdAt 
+                                ? new Date(n.createdAt.seconds * 1000).toLocaleDateString() 
+                                : (n.repliedAt ? new Date(n.repliedAt.seconds * 1000).toLocaleDateString() : '')}
+                        </span>
+                    </div>
+                    <p className="text-[10px] text-slate-300 line-clamp-2 italic">
+                        "${n.directMessage ? n.message : n.reply}"
+                    </p>
+                    ${!n.replyViewed ? html`<span className="absolute right-2 bottom-2 w-1.5 h-1.5 bg-rose-500 rounded-full"></span>` : ''}
+                </div>
+            `)}
+        </div>
+        <div className="p-3 bg-slate-800/10 text-center">
+            <button onClick=${() => { setActiveTab('settings'); setShowNotificationList(false); }} className="text-[8px] font-black text-slate-500 uppercase hover:text-violet-400 transition-colors tracking-widest">Ver Todas as Mensagens</button>
+        </div>
+    </div>
+` : ''}
                                     <div className="glass p-1.5 rounded-2xl flex items-center gap-1 flex-1 sm:flex-initial">
                                         <button onClick=${() => changeMonth(-1)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-violet-400 transition-colors"><i className="fas fa-chevron-left text-[10px]"></i></button>
                                         <div className="flex-1 text-center min-w-[120px]">
@@ -2030,8 +2043,8 @@ const automaticTips = useMemo(() => {
             </div>
 
             ${user.email !== 'davidbhmg147@gmail.com' ? html`
-                <!-- NOVA ABA: MENSAGENS DO ADMIN PARA USUÁRIOS -->
-                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
+    <!-- NOVA ABA: MENSAGENS DO ADMIN PARA USUÁRIOS -->
+    <div id="mensagens-admin-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-emerald-600/20 text-emerald-400 rounded-xl flex items-center justify-center">
                             <i className="fas fa-envelope"></i>

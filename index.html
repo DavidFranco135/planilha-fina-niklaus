@@ -1,282 +1,139 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Finanças</title>
-    
-    <!-- Configurações para Web App (PWA) e Favicons -->
-    <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-touch-fullscreen" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png">
-    
-    <!-- Importação de bibliotecas externas -->
-    <script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    // Sua configuração aqui (colors, theme, etc)
-    theme: {
-      extend: {
-        colors: {
-          violet: { 600: '#7c3aed' }
-        }
-      }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Finanças</title>
+
+  <!-- PWA / Icons -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-touch-fullscreen" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png" />
+  <link rel="icon" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png" />
+  <link rel="icon" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png" />
+
+  <!-- Libs -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      margin: 0;
+    }
+  </style>
+
+  <!-- Import Map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.2.0",
+      "react-dom": "https://esm.sh/react-dom@18.2.0",
+      "htm": "https://esm.sh/htm@3.1.1",
+      "@google/genai": "https://esm.sh/@google/genai"
     }
   }
-</script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        
-        :root {
-            --primary: #8b5cf6;
-            --bg-dark: #0f172a;
-        }
-
-        /* Estilização Geral do Body */
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: var(--bg-dark); 
-            color: #f1f5f9;
-            margin: 0;
-            overflow-x: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* Efeito de Vidro Fosco (Glassmorphism) */
-        .glass {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        /* Animação de Loading */
-        .loader { 
-            border-top-color: var(--primary); 
-            animation: spinner 0.8s ease-in-out infinite; 
-        }
-        @keyframes spinner { to { transform: rotate(360deg); } }
-
-        /* Animações de Entrada de Elementos */
-        .animate-in {
-            animation: fadeIn 0.3s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Destaque para item ativo na Sidebar */
-        .sidebar-item-active {
-            background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0) 100%);
-            color: var(--primary);
-            border-right: 3px solid var(--primary);
-            text-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
-        }
-
-        /* Customização de Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        
-        /* Ajuste de inputs para dispositivos móveis */
-        input, select, textarea { font-size: 16px !important; color: white !important; }
-        
-        @media (max-width: 640px) {
-            .text-3xl { font-size: 1.5rem !important; }
-            .p-8 { padding: 1.25rem !important; }
-            .p-10 { padding: 1.5rem !important; }
-            .rounded-[2.5rem] { border-radius: 1.5rem !important; }
-            .rounded-[3rem] { border-radius: 2rem !important; }
-        }
-
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .notification-layer {
-            z-index: 9999 !important;
-        }
-
-        /* Efeito de desfoque para ocultar valores */
-        .blur-value {
-            filter: blur(8px);
-            opacity: 0.6;
-            user-select: none;
-            pointer-events: none;
-        }
-
-        .transition-value {
-            transition: filter 0.3s ease, opacity 0.3s ease;
-        }
-
-        /* Estilização do Toggle Switch (Configurações) */
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 44px;
-          height: 24px;
-        }
-
-        .switch input { 
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #334155;
-          transition: .4s;
-          border-radius: 34px;
-        }
-
-        .slider:before {
-          position: absolute;
-          content: "";
-          height: 18px;
-          width: 18px;
-          left: 3px;
-          bottom: 3px;
-          background-color: white;
-          transition: .4s;
-          border-radius: 50%;
-        }
-
-        input:checked + .slider {
-          background-color: var(--primary);
-        }
-
-        input:checked + .slider:before {
-          transform: translateX(20px);
-        }
-    </style>
-
-    <!-- Mapeamento de Módulos (ESM) -->
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom": "https://esm.sh/react-dom@18.2.0",
-        "firebase/app": "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js",
-        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js",
-        "htm": "https://esm.sh/htm@3.1.1",
-        "@google/genai": "https://esm.sh/@google/genai"
-      }
-    }
-    </script>
+  </script>
 </head>
+
 <body>
-    <div id="root"></div>
+  <div id="root"></div>
 
-   <script type="module">
-    // 1. IMPORTS NO TOPO
-   import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
+  <script type="module">
+    /* =========================
+       IMPORTS
+    ========================= */
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
 
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  addDoc,
-  query,
-  where,
-  onSnapshot,
-  deleteDoc,
-  updateDoc,
-  writeBatch,
-  serverTimestamp,
-  orderBy,
-  getDocs
-} from "firebase/firestore";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      sendPasswordResetEmail,
+      signInWithEmailAndPassword,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import ReactDOM from "react-dom";
-import htm from "htm";
-import { GoogleGenAI } from "@google/genai";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      getDoc,
+      collection,
+      addDoc,
+      query,
+      where,
+      onSnapshot,
+      deleteDoc,
+      updateDoc,
+      writeBatch,
+      serverTimestamp,
+      orderBy,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js";
 
-const html = htm.bind(React.createElement);
+    import React, { useState, useEffect, useMemo, useRef } from "react";
+    import ReactDOM from "react-dom";
+    import htm from "htm";
+    import { GoogleGenAI } from "@google/genai";
 
-/* =========================
-   2. FIREBASE CONFIG
-========================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
-  authDomain: "planilha-fina.firebaseapp.com",
-  projectId: "planilha-fina",
-  storageBucket: "planilha-fina.firebasestorage.app",
-  messagingSenderId: "288466007894",
-  appId: "1:288466007894:web:e917cc6eeac421671188f7"
-};
+    const html = htm.bind(React.createElement);
 
-/* =========================
-   3. INIT FIREBASE
-========================= */
-const fbApp = initializeApp(firebaseConfig);
-const auth = getAuth(fbApp);
-const db = getFirestore(fbApp);
+    /* =========================
+       FIREBASE CONFIG
+    ========================= */
+    const firebaseConfig = {
+      apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
+      authDomain: "planilha-fina.firebaseapp.com",
+      projectId: "planilha-fina",
+      storageBucket: "planilha-fina.firebasestorage.app",
+      messagingSenderId: "288466007894",
+      appId: "1:288466007894:web:e917cc6eeac421671188f7"
+    };
 
-/* =========================
-   4. CONTROLE DE USUÁRIO
-   (ESSENCIAL – NÃO REMOVER)
-========================= */
-let usuarioAtual = null;
+    /* =========================
+       INIT FIREBASE
+    ========================= */
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-/* 
-  🔐 ESTE BLOCO É O QUE RESOLVE:
-  - múltiplos dispositivos
-  - erro de permissão
-  - sessão restaurada corretamente
-*/
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    usuarioAtual = user;
-    console.log("Usuário autenticado:", user.uid);
+    /* =========================
+       CONTROLE DE USUÁRIO
+    ========================= */
+    let usuarioAtual = null;
 
-    // garante que o documento exista (não altera seu sistema)
-    await setDoc(
-      doc(db, "users", user.uid),
-      {
-        email: user.email,
-        ultimoAcesso: serverTimestamp()
-      },
-      { merge: true }
-    );
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        usuarioAtual = user;
+        console.log("Usuário autenticado:", user.uid);
 
-    // 🚀 A PARTIR DAQUI seu app pode rodar normalmente
-    if (typeof iniciarApp === "function") {
-      iniciarApp();
-    }
-  } else {
-    usuarioAtual = null;
-    console.log("Nenhum usuário logado");
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            email: user.email,
+            ultimoAcesso: serverTimestamp()
+          },
+          { merge: true }
+        );
 
-    if (typeof mostrarTelaLogin === "function") {
-      mostrarTelaLogin();
-    }
-  }
-});
+        if (typeof iniciarApp === "function") {
+          iniciarApp();
+        }
+      } else {
+        usuarioAtual = null;
+        console.log("Nenhum usuário logado");
+
+        if (typeof mostrarTelaLogin === "function") {
+          mostrarTelaLogin();
+        }
+      }
+    });
 
         // ... Resto dos sons e componentes (Avatar, etc) ...
 

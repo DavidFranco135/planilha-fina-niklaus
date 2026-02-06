@@ -184,41 +184,99 @@
 
    <script type="module">
     // 1. IMPORTS NO TOPO
-    import { initializeApp } from "firebase/app";
-    import { 
-        getAuth, 
-        createUserWithEmailAndPassword, 
-        sendPasswordResetEmail,
-        signInWithEmailAndPassword 
-    } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
-    
-    import { 
-        getFirestore, doc, setDoc, getDoc, collection, 
-        addDoc, query, where, onSnapshot, deleteDoc, updateDoc, 
-        writeBatch, serverTimestamp, orderBy, getDocs 
-    } from "firebase/firestore";
+   import { initializeApp } from "firebase/app";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
 
-    import React, { useState, useEffect, useMemo, useRef } from 'react';
-    import ReactDOM from 'react-dom';
-    import htm from 'htm';
-    import { GoogleGenAI } from "@google/genai";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  addDoc,
+  query,
+  where,
+  onSnapshot,
+  deleteDoc,
+  updateDoc,
+  writeBatch,
+  serverTimestamp,
+  orderBy,
+  getDocs
+} from "firebase/firestore";
 
-    const html = htm.bind(React.createElement);
-    
-    // 2. CONFIGURAÇÃO E INICIALIZAÇÃO
-    const firebaseConfig = {
-        apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
-        authDomain: "planilha-fina.firebaseapp.com",
-        projectId: "planilha-fina",
-        storageBucket: "planilha-fina.firebasestorage.app",
-        messagingSenderId: "288466007894",
-        appId: "1:288466007894:web:e917cc6eeac421671188f7"
-    };
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import ReactDOM from "react-dom";
+import htm from "htm";
+import { GoogleGenAI } from "@google/genai";
 
-    // Inicialização correta
-    const fbApp = initializeApp(firebaseConfig);
-    const auth = getAuth(fbApp);
-    const db = getFirestore(fbApp);
+const html = htm.bind(React.createElement);
+
+/* =========================
+   2. FIREBASE CONFIG
+========================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
+  authDomain: "planilha-fina.firebaseapp.com",
+  projectId: "planilha-fina",
+  storageBucket: "planilha-fina.firebasestorage.app",
+  messagingSenderId: "288466007894",
+  appId: "1:288466007894:web:e917cc6eeac421671188f7"
+};
+
+/* =========================
+   3. INIT FIREBASE
+========================= */
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+/* =========================
+   4. CONTROLE DE USUÁRIO
+   (ESSENCIAL – NÃO REMOVER)
+========================= */
+let usuarioAtual = null;
+
+/* 
+  🔐 ESTE BLOCO É O QUE RESOLVE:
+  - múltiplos dispositivos
+  - erro de permissão
+  - sessão restaurada corretamente
+*/
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    usuarioAtual = user;
+    console.log("Usuário autenticado:", user.uid);
+
+    // garante que o documento exista (não altera seu sistema)
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        email: user.email,
+        ultimoAcesso: serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    // 🚀 A PARTIR DAQUI seu app pode rodar normalmente
+    if (typeof iniciarApp === "function") {
+      iniciarApp();
+    }
+  } else {
+    usuarioAtual = null;
+    console.log("Nenhum usuário logado");
+
+    if (typeof mostrarTelaLogin === "function") {
+      mostrarTelaLogin();
+    }
+  }
+});
 
         // ... Resto dos sons e componentes (Avatar, etc) ...
 

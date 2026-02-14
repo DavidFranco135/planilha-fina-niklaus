@@ -189,7 +189,9 @@
         getAuth, 
         createUserWithEmailAndPassword, 
         sendPasswordResetEmail,
-        signInWithEmailAndPassword 
+        signInWithEmailAndPassword,
+        signInAnonymously,
+        onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
     
     import { 
@@ -219,6 +221,22 @@
     const fbApp = initializeApp(firebaseConfig);
     const auth = getAuth(fbApp);
     const db = getFirestore(fbApp);
+
+    // Autenticação Anônima para permitir acesso ao Firestore com regras de segurança
+    onAuthStateChanged(auth, (user) => {
+        if (!user) {
+            // Se não há usuário autenticado, faz login anônimo
+            signInAnonymously(auth)
+                .then(() => {
+                    console.log('✅ Autenticação anônima realizada com sucesso');
+                })
+                .catch((error) => {
+                    console.error('❌ Erro na autenticação anônima:', error);
+                });
+        } else {
+            console.log('👤 Usuário autenticado:', user.uid);
+        }
+    });
 
         // ... Resto dos sons e componentes (Avatar, etc) ...
 

@@ -106,7 +106,34 @@
     /* =========================
        CONTROLE DE USUÁRIO
     ========================= */
-    // Auth state será gerenciado dentro do componente React
+    let usuarioAtual = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        usuarioAtual = user;
+        console.log("Usuário autenticado:", user.uid);
+
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            email: user.email,
+            ultimoAcesso: serverTimestamp()
+          },
+          { merge: true }
+        );
+
+        if (typeof iniciarApp === "function") {
+          iniciarApp();
+        }
+      } else {
+        usuarioAtual = null;
+        console.log("Nenhum usuário logado");
+
+        if (typeof mostrarTelaLogin === "function") {
+          mostrarTelaLogin();
+        }
+      }
+    });
 
         // ... Resto dos sons e componentes (Avatar, etc) ...
 
@@ -337,81 +364,11 @@ const [uploadingFile, setUploadingFile] = useState(null);
   };
 }; // ← FECHA A FUNÇÃO startDataSync
 
-// 🔐 EFEITO PRINCIPAL: Monitora autenticação do Firebase
+// Efeito para checar persistência de login ao carregar
 useEffect(() => {
-    console.log("🔵 Iniciando monitoramento de autenticação Firebase...");
-    
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        console.log("🔐 Firebase Auth State Changed:", firebaseUser ? `✅ Logado como ${firebaseUser.email}` : "❌ Deslogado");
-        
-        if (firebaseUser) {
-            // ✅ USUÁRIO AUTENTICADO NO FIREBASE
-            const safeId = firebaseUser.email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-            console.log("📝 SafeID gerado:", safeId);
-            
-            try {
-                // Buscar dados do usuário no Firestore
-                const userRef = doc(db, "users", safeId);
-                console.log("🔍 Buscando usuário no Firestore...");
-                const userSnap = await getDoc(userRef);
-                
-                if (userSnap.exists()) {
-                    const userData = userSnap.data();
-                    console.log("✅ Usuário encontrado no Firestore:", userData.email);
-                    
-                    const isUserAdmin = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com';
-                    console.log("👤 É admin?", isUserAdmin);
-                    console.log("💳 Status pagamento:", userData.paid || userData.status);
-                    
-                    // Verificar se tem acesso
-                    if (isUserAdmin || userData.paid || userData.status === 'paid') {
-                        console.log("✅ ACESSO LIBERADO - Iniciando app...");
-                        
-                        // Atualizar último acesso
-                        await setDoc(userRef, {
-                            ultimoAcesso: serverTimestamp()
-                        }, { merge: true });
-                        
-                        // Guardar sessão
-                        localStorage.setItem('belaju_sid', safeId);
-                        
-                        // Iniciar sincronização de dados
-                        startDataSync(safeId);
-                    } else {
-                        console.warn("⛔ Acesso bloqueado - Usuário não pagou");
-                        alert("⚠️ Acesso bloqueado. Efetue o pagamento para continuar.");
-                        await auth.signOut();
-                        setLoading(false);
-                    }
-                } else {
-                    console.error("❌ Usuário autenticado mas não existe no Firestore");
-                    alert("❌ Erro: Dados do usuário não encontrados. Contate o suporte.");
-                    await auth.signOut();
-                    setLoading(false);
-                }
-            } catch (error) {
-                console.error("❌ Erro ao buscar dados do usuário:", error);
-                console.error("Detalhes do erro:", error.message);
-                alert("❌ Erro ao carregar dados. Tente novamente.");
-                await auth.signOut();
-                setLoading(false);
-            }
-        } else {
-            // ❌ NÃO HÁ USUÁRIO AUTENTICADO
-            console.log("⚠️ Nenhum usuário autenticado - Mostrando tela de login");
-            setUser(null);
-            setTransactions([]);
-            setLoading(false);
-            localStorage.removeItem('belaju_sid');
-            sessionStorage.removeItem('belaju_sid');
-        }
-    });
-    
-    // Cleanup
-    return () => {
-        console.log("🔴 Removendo listener de autenticação");
-        unsubscribe();
-    };
+    const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+    if (sid) return startDataSync(sid);
+    setLoading(false);
 }, []);
 
 // Efeito para fechar dropdown de notificações ao clicar fora
@@ -446,113 +403,90 @@ const notifications = useMemo(() => {
 
 const handleAuth = async (e) => {
     if (e) e.preventDefault();
-    console.log("🔐 Iniciando processo de autenticação...");
     
     // Validação inicial
     if (!email || (!isRecovering && !pass)) {
-        alert("❌ Preencha os campos corretamente.");
+        alert("Preencha os campos corretamente.");
         return;
     }
 
     setAuthLoading(true);
     
     try {
-        const trimmedEmail = email.toLowerCase().trim();
-        console.log("📧 Email:", trimmedEmail);
-        
+        // 'auth' e 'db' já foram inicializados no topo do script
+        const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+        const userRef = doc(db, "users", safeId);
+        const userSnap = await getDoc(userRef);
+
         // --- MODO: RECUPERAÇÃO DE SENHA ---
         if (isRecovering) {
-            console.log("🔄 Modo: Recuperação de senha");
             auth.languageCode = 'pt';
-            await sendPasswordResetEmail(auth, trimmedEmail);
-            alert("✅ E-mail de redefinição enviado! Verifique sua caixa de entrada.");
+            await sendPasswordResetEmail(auth, email.trim());
+            alert("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
             setIsRecovering(false);
-            setEmail('');
         } 
         
         // --- MODO: CADASTRO ---
         else if (isRegistering) {
-            console.log("📝 Modo: Cadastro");
-            const safeId = trimmedEmail.replace(/[^a-z0-9]/g, '_');
-            const userRef = doc(db, "users", safeId);
-            
-            // Verificar se já existe (SEM AUTENTICAÇÃO AINDA)
-            try {
-                // Temporariamente, vamos criar sem verificar
-                console.log("🆕 Criando nova conta...");
-                const cred = await createUserWithEmailAndPassword(auth, trimmedEmail, pass);
-                console.log("✅ Conta criada no Firebase Auth:", cred.user.uid);
-                
+            if (userSnap.exists()) {
+                alert("Este e-mail já está cadastrado.");
+            } else {
+                // Cria no Authentication
+                const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
                 // Salva no Firestore
                 await setDoc(userRef, {
                     uid: cred.user.uid,
-                    email: trimmedEmail,
+                    email: email.trim(),
+                    password: pass, // Senha em texto para o seu sistema de login legado
                     status: 'pending',
                     paid: false,
-                    createdAt: serverTimestamp(),
-                    appName: '',
-                    secondaryName: '',
-                    photoURL: '',
-                    secondaryPhotoURL: '',
-                    soundEnabled: true
+                    createdAt: serverTimestamp()
                 });
-                console.log("✅ Dados salvos no Firestore");
-                
-                alert("✅ Conta criada com sucesso! Aguarde aprovação do pagamento.");
+                alert("Conta criada com sucesso!");
                 setIsRegistering(false);
-                setEmail('');
-                setPass('');
-                
-                // Desloga para não entrar sem pagamento
-                await auth.signOut();
-            } catch (createError) {
-                if (createError.code === 'auth/email-already-in-use') {
-                    alert("❌ Este e-mail já está cadastrado. Faça login.");
-                } else {
-                    throw createError;
-                }
             }
         } 
         
-        // --- MODO: LOGIN ---
+        // --- MODO: LOGIN COM SINCRONIZAÇÃO DE SENHA ---
         else {
-            console.log("🔑 Modo: Login");
-            console.log("🔐 Tentando autenticar no Firebase Auth...");
-            
-            // APENAS faz login no Firebase Auth
-            // O onAuthStateChanged vai pegar automaticamente e fazer o resto
-            await signInWithEmailAndPassword(auth, trimmedEmail, pass);
-            console.log("✅ Login no Firebase Auth bem-sucedido!");
-            console.log("⏳ Aguardando onAuthStateChanged processar...");
-            
-            // NÃO precisa fazer mais nada aqui
-            // O useEffect com onAuthStateChanged vai:
-            // 1. Detectar que está logado
-            // 2. Buscar dados do Firestore
-            // 3. Verificar pagamento
-            // 4. Iniciar o app
+            try {
+                // 1. Tenta logar no Firebase Auth (valida a senha nova se tiver sido resetada)
+                await signInWithEmailAndPassword(auth, email.trim(), pass);
+                
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+
+                    // 2. SINCRONIZAÇÃO: Se a senha digitada for diferente da que está no Firestore, atualiza o Firestore
+                    if (userData.password !== pass) {
+                        await updateDoc(userRef, { password: pass });
+                        console.log("Senha sincronizada no banco de dados.");
+                    }
+
+                    // 3. Verificação de Acesso (Pagamento ou Admin)
+                    if (userData.paid || userData.status === 'paid' || email.toLowerCase() === 'niklaus') {
+                        const storage = keepConnected ? localStorage : sessionStorage;
+                        storage.setItem('belaju_sid', safeId);
+                        
+                        // Inicia sincronização de dados do app
+                        if (typeof startDataSync === 'function') {
+                            startDataSync(safeId);
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        alert("Acesso restrito. Efetue o pagamento para liberar.");
+                    }
+                } else {
+                    alert("Usuário não encontrado no banco de dados..");
+                }
+            } catch (authErr) {
+                console.error("Erro no login:", authErr);
+                alert("E-mail ou senha incorretos. Se você redefiniu a senha, use a nova.");
+            }
         }
     } catch (err) {
-        console.error("❌ Erro na autenticação:", err);
-        console.error("Código do erro:", err.code);
-        console.error("Mensagem:", err.message);
-        
-        // Mensagens de erro específicas
-        if (err.code === 'auth/invalid-email') {
-            alert("❌ E-mail inválido.");
-        } else if (err.code === 'auth/user-not-found') {
-            alert("❌ Usuário não encontrado. Crie uma conta primeiro.");
-        } else if (err.code === 'auth/wrong-password') {
-            alert("❌ Senha incorreta.");
-        } else if (err.code === 'auth/invalid-credential') {
-            alert("❌ E-mail ou senha incorretos.");
-        } else if (err.code === 'auth/too-many-requests') {
-            alert("❌ Muitas tentativas. Aguarde alguns minutos.");
-        } else if (err.code === 'auth/weak-password') {
-            alert("❌ Senha muito fraca. Use pelo menos 6 caracteres.");
-        } else {
-            alert("❌ Erro: " + err.message);
-        }
+        console.error("Erro Geral:", err);
+        alert("Ocorreu um erro: " + err.message);
     } finally {
         setAuthLoading(false);
     }
@@ -560,20 +494,12 @@ const handleAuth = async (e) => {
             /**
              * Limpa dados de sessão ao sair
              */
-            const handleLogout = async () => {
-                console.log("👋 Fazendo logout...");
-                try {
-                    await auth.signOut();
-                    console.log("✅ Logout do Firebase Auth realizado");
-                    localStorage.removeItem('belaju_sid');
-                    sessionStorage.removeItem('belaju_sid');
-                    setUser(null);
-                    setTransactions([]);
-                    setLoading(false);
-                    console.log("✅ Sessão limpa");
-                } catch (error) {
-                    console.error("❌ Erro ao fazer logout:", error);
-                }
+            const handleLogout = () => {
+                localStorage.removeItem('belaju_sid');
+                sessionStorage.removeItem('belaju_sid');
+                setUser(null);
+                setTransactions([]);
+                setLoading(false);
             };
 
             /**
